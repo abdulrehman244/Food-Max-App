@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
-import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/features/cart/cart_view.dart';
 import 'package:food_delivery_app/features/cart/cart_viewmodel.dart';
 import 'package:food_delivery_app/features/rest_detail_view/item_detail_view.dart';

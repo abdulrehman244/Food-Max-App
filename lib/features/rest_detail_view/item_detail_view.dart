@@ -53,6 +53,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ignore: unused_local_variable
     final vm = context.watch<CartViewModel>();
 
     final visibleItems = showMore

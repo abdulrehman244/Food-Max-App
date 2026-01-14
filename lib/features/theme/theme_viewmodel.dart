@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hive_ce_flutter/adapters.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/core/services/hive_service.dart';
 
 class ThemeViewModel extends ChangeNotifier {

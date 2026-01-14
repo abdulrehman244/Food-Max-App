@@ -1,9 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:food_delivery_app/config/routes/app_routes.dart';
-import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
-import 'package:food_delivery_app/features/auth/notification%20access/notification_view.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
