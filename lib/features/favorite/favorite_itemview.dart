@@ -4,10 +4,34 @@ import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/widgets/custom_restaurantcard.dart';
 import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 
-class FavoriteItemview extends StatelessWidget {
+class FavoriteItemview extends StatefulWidget {
   const FavoriteItemview({super.key});
+
+  @override
+  State<FavoriteItemview> createState() => _FavoriteItemviewState();
+
+  
+}
+
+
+
+class _FavoriteItemviewState extends State<FavoriteItemview> {
+
+  @override
+  void initState() {
+    super.initState();
+
+    
+    Future.microtask(() {
+      context.read<HomeViewModel>().syncFavoritesWithFirestore();
+    });
+  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +39,10 @@ class FavoriteItemview extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1.0),
-            child: Divider(color: Colors.grey,thickness: 1,endIndent: 0,indent: 0,),
+            preferredSize: const Size.fromHeight(2),
+            child:Divider(thickness: 0.7,height: 0,color: Colors.grey.shade400,endIndent: 0,indent: 0,)
           ),
         titleSpacing: 0,
         title: Text(
@@ -25,6 +50,12 @@ class FavoriteItemview extends StatelessWidget {
           style: AppText.bodyLarge.copyWith(color: Colors.black, fontSize: 20),
         ),
       ),
+     
+     
+     
+     
+     
+     
       body: Consumer<HomeViewModel>(
         builder: (context, model, child) {
           final favRestaurants = model.restaurants
@@ -69,7 +100,11 @@ class FavoriteItemview extends StatelessWidget {
           }
 
           // ListView ke liye bhi Material wrapper
-          return ListView.builder(
+          return  
+          model.favSyncLoading ? 
+          Center(child: Lottie.asset("assets/lottie/search_load.json"))
+          :
+          ListView.builder(
             itemCount: favRestaurants.length,
             itemBuilder: (context, index) {
               final r = favRestaurants[index];

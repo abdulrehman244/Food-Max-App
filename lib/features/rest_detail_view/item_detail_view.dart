@@ -1,133 +1,172 @@
 // ignore_for_file: use_build_context_synchronously
-
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
+import 'package:food_delivery_app/core/services/hive_service.dart';
 import 'package:food_delivery_app/data/models/CategoryItemModel.dart';
 import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/features/cart/cart_viewmodel.dart';
-import 'package:food_delivery_app/features/check_out/confirm_orderview.dart';
 import 'package:provider/provider.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final CategoryItemModel item;
-  const ItemDetailScreen({super.key, required this.item});
+  final List<CategoryItemModel> allItems;
+  final String restaurantName;
+  final String restaurantImage;
+  final Map<String, dynamic> restaurantLocation;
+
+  const ItemDetailScreen({
+    super.key,
+    required this.item,
+    required this.allItems,
+    required this.restaurantName,
+    required this.restaurantImage,
+    required this.restaurantLocation,
+  });
 
   @override
   State<ItemDetailScreen> createState() => _ItemDetailScreenState();
 }
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
-  int _quantity = 1;
-  bool _isInCart = false;
-  int _cartQuantity = 0;
+  final hive = HiveService();
+  final TextEditingController _instructionController = TextEditingController();
+  int quantity = 1;
+
+  // Quantity will be managed in CartViewModel
+  late List<CategoryItemModel> frequentItems;
+  bool showMore = false;
+  final Map<String, bool> selectedFrequentItems = {};
 
   @override
   void initState() {
     super.initState();
-    final cartVm = context.read<CartViewModel>();
-    final cartItems = cartVm.cartItems;
-
-    // check if item is already in cart
-    final existingItem = cartItems.firstWhere(
-      (e) => e['name'] == widget.item.name,
-      orElse: () => {},
-    );
-
-    if (existingItem.isNotEmpty) {
-      _isInCart = true;
-      _cartQuantity = existingItem['quantity'] ?? 1;
-    }
+    // Shuffle only once
+    frequentItems =
+        widget.allItems.where((e) => e.id != widget.item.id).toList()
+          ..shuffle(Random());
+    if (frequentItems.length > 6)
+      frequentItems = frequentItems.take(6).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cartVm = context.read<CartViewModel>();
+    final vm = context.watch<CartViewModel>();
+
+    final visibleItems = showMore
+        ? frequentItems
+        : frequentItems.take(3).toList();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              QuantityCounter(
-                quantity: _quantity,
-                onAdd: () {
-                  setState(() {
-                    _quantity++;
-                  });
-                },
-                onRemove: () {
-                  if (_quantity > 1) {
-                    setState(() {
-                      _quantity--;
-                    });
-                  }
-                },
-                border: Border.all(color: Colors.grey, width: 1),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: MyButton(
-                  title: _isInCart ? "Update Cart" : "Add to Cart",
-                  ontap: () {
-                   if (_isInCart) {
-  final newQuantity = _cartQuantity + _quantity;
-  cartVm.updateItemQuantity(widget.item.name, newQuantity);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text("Cart updated")),
-  );
-  setState(() {
-    _cartQuantity = newQuantity;
-    _quantity = 1; // reset temp quantity
-  });
-} else {
-  cartVm.addToCart(
-    name: widget.item.name,
-    image: widget.item.image,
-    price: widget.item.price,
-  );
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text("Item added to cart")),
-  );
-  setState(() {
-    _isInCart = true;
-    _cartQuantity = _quantity;
-    _quantity = 1;
-  });
-}
 
-                  },
-                ),
-              ),
-            ],
+      /// ================= BOTTOM BAR =================
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Consumer<CartViewModel>(
+            builder: (context, cartVm, _) {
+              return Row(
+                children: [
+                  QuantityCounter(
+                    quantity: quantity,
+                    onAdd: () {
+                      HapticFeedback.vibrate();
+
+                      setState(() {
+                        quantity++;
+                      });
+                    },
+                    onRemove: () {
+                      HapticFeedback.vibrate();
+
+                      if (quantity > 1) {
+                        setState(() {
+                          quantity--;
+                        });
+                      }
+                    },
+                  ),
+
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: MyButton(
+                      title: "Add to Cart",
+                      ontap: () async {
+                        // // Add main item
+
+                        await cartVm.addToCart(
+                          restaurantId: widget.item.restaurantId,
+                          restaurantName: widget.restaurantName,
+                          restaurantImage: widget.restaurantImage,
+                          restaurantLocation: widget.restaurantLocation,
+                          item: {
+                            "itemId": widget.item.id,
+                            "name": widget.item.name,
+                            "image": widget.item.image,
+                            "price": widget.item.price,
+                            "qty": quantity, // ✅ local quantity
+                            "instructions": _instructionController.text,
+                          },
+                        );
+
+                        // 2️⃣ Add frequently bought items (if selected) with quantity = 1
+                        for (var item in frequentItems) {
+                          if (selectedFrequentItems[item.id] == true) {
+                            await cartVm.addToCart(
+                              restaurantId: item.restaurantId,
+                              restaurantName: widget.restaurantName,
+                              restaurantImage: widget.restaurantImage,
+                              restaurantLocation: widget.restaurantLocation,
+                              item: {
+                                "itemId": item.id,
+                                "name": item.name,
+                                "image": item.image,
+                                "price": item.price,
+                                "qty": 1, // always 1
+                                "instructions": "",
+                              },
+                            );
+                          }
+                        }
+
+                        // Reset after adding
+                        setState(() {
+                          quantity = 1;
+                          _instructionController.clear();
+                          selectedFrequentItems.clear(); // uncheck all
+                        });
+
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
+
+      /// ================= APP BAR =================
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(12),
           child: GestureDetector(
             onTap: () => Nav.back(context),
-            child: CircleAvatar(
+            child: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: const Icon(Icons.close_outlined, color: Colors.black),
+              child: Icon(Icons.close_outlined, color: Colors.black),
             ),
           ),
         ),
         backgroundColor: Colors.transparent,
       ),
+
+      /// ================= BODY =================
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,81 +178,245 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               fit: BoxFit.cover,
             ),
             const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(widget.item.name,
-                        style: AppText.titleLarge.copyWith(
-                          color: Colors.black,
-                          fontSize: 25,
-                        )),
-                  ),
-                  SizedBox(height: 15),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text("Rs. ${widget.item.price}",
-                        style: AppText.bodyLarge.copyWith(
-                          color: Colors.black,
-                          fontSize: 18,
-                        )),
-                  ),
-                  SizedBox(height: 3),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(widget.item.description),
-                  ),
-                  SizedBox(height: 10),
 
-                   Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      child: Container(
-                        height: 8,
-                        decoration: BoxDecoration(color: Colors.grey.shade100),
-                      ),
-                    ),
-
-                  if (_isInCart)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20,vertical: 10),
-                      child: SizedBox(
-                        height: 60,
-                        child: Card(
+            //=====================================================================
+            Consumer<CartViewModel>(
+              builder: (context, cartVm, _) {
+                if (cartVm.isItemInCart(widget.item.id)) {
+                  return Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        height: 40,
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          elevation: 10,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            side: BorderSide(
-                              width: 2,color: Colors.grey.shade300
-                            )
+                          borderRadius: BorderRadius.circular(5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
                             ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(children: [
-                              Text("${_cartQuantity}x",style: AppText.bodyLarge.copyWith(color: Colors.black,fontSize: 16)),
-                              SizedBox(width: 15,),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(widget.item.name,style: AppText.bodyLarge.copyWith(color: Colors.grey.shade700,fontSize: 14)),
-                                  Text("Already in your cart",style: AppText.bodyLarge.copyWith(color: Colors.grey,fontSize: 10))
-                                ],
-                              ),
-                              Spacer(),
-                              InkWell(
-                                onTap: () => Nav.to(context, ConfirmOrderview()),
-                                child: Text("Edit in cart",style: AppText.titleLarge.copyWith(color: Colors.black,fontSize: 14)))
-                            ],),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            "This item is already in your cart",
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    )
+                    ],
+                  );
+                } else {
+                  return const SizedBox.shrink();
+                }
+              },
+            ),
+            const SizedBox(height: 10),
 
+            //============================================================================
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                widget.item.name,
+                style: AppText.titleLarge.copyWith(
+                  fontSize: 25,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    "Rs. ${widget.item.price.toStringAsFixed(0)}",
+                    style: AppText.bodyLarge.copyWith(
+                      color: widget.item.oldPrice != null
+                          ? Colors.pink
+                          : Colors.black,
+                      fontSize: 18,
+                    ),
+                  ),
+                  if (widget.item.oldPrice != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      "Rs. ${widget.item.oldPrice}",
+                      style: const TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                widget.item.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 15),
+            Container(height: 8, color: Colors.grey.shade100),
+            const SizedBox(height: 15),
+
+            /// ================= FREQUENTLY BOUGHT =================
+            if (frequentItems.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Frequently bought together",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text("Other customers also ordered these"),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text("Optional"),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...visibleItems.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          item.image,
+                          height: 55,
+                          width: 55,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text("Rs. ${item.price.toStringAsFixed(0)}"),
+                          ],
+                        ),
+                      ),
+                      Consumer<CartViewModel>(
+                        builder: (context, cartVm, _) {
+                          return Checkbox(
+                            checkColor: Colors.white,
+                            activeColor: Colors.black,
+                            value: selectedFrequentItems[item.id] ?? false,
+                            onChanged: (val) {
+                              setState(() {
+                                selectedFrequentItems[item.id] = val ?? false;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (frequentItems.length > 3)
+                Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: TextButton(
+                    onPressed: () => setState(() => showMore = !showMore),
+                    child: Row(
+                      children: [
+                        Icon(
+                          showMore ? Icons.expand_less : Icons.expand_more,
+                          size: 30,
+                          color: Colors.black,
+                        ),
+                        Text(
+                          showMore ? "View less" : "View 3 more",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+
+            const SizedBox(height: 15),
+            Container(height: 8, color: Colors.grey.shade100),
+            const SizedBox(height: 15),
+
+            /// ================= SPECIAL INSTRUCTIONS =================
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Special instructions",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    "Please let us know if you are allergic to anything or if we need to avoid anything",
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: TextField(
+                controller: _instructionController,
+                maxLength: 500,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "e.g. no mayo",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               ),
             ),
           ],
@@ -223,12 +426,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   }
 }
 
+/// ================= QUANTITY COUNTER =================
 class QuantityCounter extends StatelessWidget {
   final int quantity;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
   final Border? border;
-  final Widget? icon;
 
   const QuantityCounter({
     super.key,
@@ -236,47 +439,42 @@ class QuantityCounter extends StatelessWidget {
     required this.onAdd,
     required this.onRemove,
     this.border,
-    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        /// MINUS
-        InkWell(
+        GestureDetector(
           onTap: quantity > 1 ? onRemove : null,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Container(
-              decoration: BoxDecoration(shape: BoxShape.circle, border: border),
-              child: icon ??
-                  Icon(
-                    Icons.remove,
-                    color: quantity > 1 ? Colors.black : Colors.grey,
-                  ),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey, width: 1),
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              Icons.remove,
+              color: quantity > 1 ? Colors.black : Colors.grey,
             ),
           ),
         ),
-
-        /// QUANTITY
-        Text(
-          quantity.toString(),
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            quantity.toString(),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
-
-        /// PLUS
-        InkWell(
+        GestureDetector(
           onTap: onAdd,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Container(
-              decoration: BoxDecoration(shape: BoxShape.circle, border: border),
-              child: const Icon(Icons.add_outlined, color: Colors.black),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey, width: 1),
             ),
+            padding: const EdgeInsets.all(6),
+            child: const Icon(Icons.add),
           ),
         ),
       ],

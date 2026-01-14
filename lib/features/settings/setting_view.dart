@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
-import 'package:food_delivery_app/features/settings/theme_viewmodel.dart';
+import 'package:food_delivery_app/features/theme/theme_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 class SettingsView extends StatefulWidget {
@@ -13,10 +13,11 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   bool pushNotification = true;
   bool emailOffers = true;
-  bool floatingIcon = false;
 
   @override
   Widget build(BuildContext context) {
+    final themeVm = context.watch<ThemeViewModel>();
+
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
@@ -24,59 +25,37 @@ class _SettingsViewState extends State<SettingsView> {
         titleSpacing: 0,
         title: Text(
           "Settings",
-          style: AppText.bodyLarge.copyWith(color: Colors.black, fontSize: 20),
+          style: AppText.bodyLarge.copyWith(
+            color: Colors.black,
+            fontSize: 20,
+          ),
         ),
-        centerTitle: false,
         elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Language Card
+            /// ---------- LANGUAGE ----------
             _card(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                children: const [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Language",
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
+                      SizedBox(height: 6),
+                      Text(
                         "English",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
-                      const SizedBox(height: 30),
-
-                      //  const Text(
-                      //   "Theme",
-                      //   style: TextStyle(
-                      //     fontSize: 16,
-                      //     color: Colors.grey,
-                      //   ),
-                      // ),
-
-                      // Consumer<SettingViewmodel>(
-                      //   builder: (context, vm, child) =>
-                      //    Switch(
-                      //         value: vm.isSwitched,
-                      //         onChanged: (value) {
-                      //           vm.toggle(value);
-                      //         },
-                      //         activeColor: Colors.pink, // ON color
-                      //         inactiveThumbColor: Colors.grey, // OFF thumb color
-                      //         inactiveTrackColor:
-                      //             Colors.grey.shade300, // OFF track color
-                      //       ),
-                      // )
                     ],
                   ),
                 ],
@@ -85,6 +64,7 @@ class _SettingsViewState extends State<SettingsView> {
 
             const SizedBox(height: 16),
 
+            /// ---------- THEME ----------
             _card(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -97,20 +77,23 @@ class _SettingsViewState extends State<SettingsView> {
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       const SizedBox(height: 6),
-
-                     Consumer<ThemeViewModel>(
-  builder: (context, vm, child) => Switch(
-    value: vm.isDarkMode,
-    onChanged: (value) {
-      vm.toggleTheme(value);
-    },
-    activeColor: vm.appColor,
-    inactiveThumbColor: Colors.grey,
-    inactiveTrackColor: Colors.grey.shade300,
-  ),
-),
-
+                      Text(
+                        themeVm.isPink ? "Pink Theme" : "Orange Theme",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
+                  ),
+
+                  /// 🔥 SWITCH BUTTON
+                  Switch(
+                    value: themeVm.isPink,
+                    onChanged: (value) {
+                      themeVm.toggleTheme(value);
+                    },
+                    activeColor: Theme.of(context).primaryColor,
                   ),
                 ],
               ),
@@ -118,7 +101,7 @@ class _SettingsViewState extends State<SettingsView> {
 
             const SizedBox(height: 16),
 
-            // Push Notification
+            /// ---------- PUSH NOTIFICATION ----------
             _card(
               child: _checkboxTile(
                 title: "Receive push notifications",
@@ -131,7 +114,7 @@ class _SettingsViewState extends State<SettingsView> {
 
             const SizedBox(height: 12),
 
-            // Email Offers
+            /// ---------- EMAIL OFFERS ----------
             _card(
               child: _checkboxTile(
                 title: "Receive offers by email",
@@ -147,7 +130,7 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  // ---------- Reusable Card ----------
+  /// ---------- CARD ----------
   Widget _card({required Widget child}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -155,14 +138,18 @@ class _SettingsViewState extends State<SettingsView> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: child,
     );
   }
 
-  // ---------- Checkbox Tile ----------
+  /// ---------- CHECKBOX ----------
   Widget _checkboxTile({
     required String title,
     required bool value,
@@ -170,8 +157,17 @@ class _SettingsViewState extends State<SettingsView> {
   }) {
     return Row(
       children: [
-        Checkbox(value: value, onChanged: onChanged, activeColor: Colors.black),
-        Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
+        Checkbox(
+          value: value,
+          onChanged: onChanged,
+          activeColor: Theme.of(context).primaryColor,
+        ),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
       ],
     );
   }

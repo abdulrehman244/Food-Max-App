@@ -1,4 +1,5 @@
 // ignore_for_file: avoid_print
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,8 +18,17 @@ class HomeViewModel extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
 
   final ScrollController scroll = ScrollController();
-  bool isSearchBarSticky = false;
+
+  bool promoVisible = false;
+  bool promoDismissed = false;
+
+  // bool bottomVisible = false;
+  // bool bottomDismissed = false;
+
+  final ValueNotifier<bool> stickySearch = ValueNotifier(false);
   int current = 0;
+  String selectedCategory = "";
+  String selectedItem = "";
   String userCity = "";
   List<RestaurantModel> restaurants = [];
   bool isUserLoading = false;
@@ -35,6 +45,7 @@ class HomeViewModel extends ChangeNotifier {
   List<RestaurantModel> randomNew = [];
 
   /// 🔥 FAVORITES (single source of truth)
+  ///
 
   // ================= USER =================
 
@@ -138,91 +149,100 @@ class HomeViewModel extends ChangeNotifier {
     return favoriteIds.contains(restaurantId);
   }
 
-  /// ✅ PERFECT SYNC TOGGLE
-  Future<void> toggleFavorite(String restaurantId) async {
-    final box = Hive.box(HiveService.favBoxName);
-    List<String> favs = List<String>.from(
-      box.get('favorites', defaultValue: []),
-    );
+void toggleFavorite(String restaurantId) async {
+  final box = Hive.box(HiveService.favBoxName);
 
-    if (favs.contains(restaurantId)) {
-      favs.remove(restaurantId);
-      await _userService.removeFavorite(restaurantId); // Firestore
-    } else {
-      favs.add(restaurantId);
-      await _userService.addFavorite(restaurantId); // Firestore
-    }
+  List<String> favs =
+      List<String>.from(box.get('favorites', defaultValue: []));
 
-    // SAVE TO HIVE
-    await box.put('favorites', favs);
-
-    // UPDATE MEMORY
-    favoriteIds = favs;
-
-    notifyListeners();
+  if (favs.contains(restaurantId)) {
+    favs.remove(restaurantId); // ❌ UN-FAV
+  } else {
+    favs.add(restaurantId);    // ✅ FAV
   }
 
-  //============================================================
+  await box.put('favorites', favs);
 
-  //================== Search Hive code ========================
-
-  Future<void> searchFetchRestaurants({bool forceRefresh = false}) async {
-  if (restaurantsFetched && !forceRefresh) {
-    // 🔥 load from Hive first
-    final localData = _hiveService.getRestaurants();
-    if (localData.isNotEmpty) {
-      restaurants = localData.map((e) => RestaurantModel.fromMap(e, e['id'])).toList();
-      notifyListeners();
-      return;
-    }
-  }
-
-  isRestaurantLoading = true;
-  notifyListeners();
-
-  try {
-    final snapshot = await _db.collection("restaurants").limit(50).get();
-    restaurants = snapshot.docs
-        .map((doc) {
-          final map = doc.data();
-          map['id'] = doc.id; // save docId
-          return RestaurantModel.fromMap(map, doc.id);
-        })
-        .toList();
-
-    // 🔥 Save to Hive for fast search later
-    final listToSave = restaurants.map((r) => r.toMap()).toList();
-    await _hiveService.saveRestaurants(listToSave);
-
-    restaurantsFetched = true;
-    notifyListeners();
-  } catch (e) {
-    print("Error fetching restaurants: $e");
-  }
-
-  isRestaurantLoading = false;
+  favoriteIds = favs;
   notifyListeners();
 }
 
-// 🔥 FAST SEARCH USING HIVE
-List<RestaurantModel> searchRestaurants(String query) {
-  final all = _hiveService.getRestaurants();
-  final filtered = all.where((r) {
-    final name = r['name']?.toString().toLowerCase() ?? '';
-    return name.contains(query.toLowerCase());
-  }).toList();
 
-  return filtered.map((e) => RestaurantModel.fromMap(e, e['id'])).toList();
+bool favSyncLoading = false;
+
+Future<void> syncFavoritesWithFirestore() async {
+  if (currentUser == null) return;
+
+  favSyncLoading = true;
+  notifyListeners();
+
+  final uid = currentUser!.uid;
+
+  // 1️⃣ HIVE → GET
+  final hiveFavs = List<String>.from(
+    Hive.box(HiveService.favBoxName)
+        .get('favorites', defaultValue: []),
+  );
+
+  // 2️⃣ HIVE → FIRESTORE
+  await _db.collection('users').doc(uid).update({
+    'favoriteRestaurants': hiveFavs,
+  });
+
+  // 3️⃣ FIRESTORE → GET
+  final snap = await _db.collection('users').doc(uid).get();
+  final serverFavs =
+      List<String>.from(snap.data()?['favoriteRestaurants'] ?? []);
+
+  // 4️⃣ FIRESTORE → HIVE
+  await Hive.box(HiveService.favBoxName)
+      .put('favorites', serverFavs);
+
+  favoriteIds = serverFavs;
+
+  favSyncLoading = false;
+  notifyListeners();
 }
-
 
 
 
   //============================================================
+
+  // =================== FETCH & SAVE RESTAURANTS TO HIVE ===================
+
+  bool restaurantsFetchedForHive = false;
+
+  Future<void> fetchAndSaveRestaurants({bool forceRefresh = false}) async {
+    if (restaurantsFetchedForHive && !forceRefresh) {
+      return; // already saved
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .get();
+
+      final List<Map<String, dynamic>> listToSave = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id; // 🔥 VERY IMPORTANT
+        return data;
+      }).toList();
+
+      // 🔥 SAVE TO HIVE
+      await HiveService().saveRestaurants(listToSave);
+
+      restaurantsFetchedForHive = true;
+
+      debugPrint('✅ Restaurants saved to Hive: ${listToSave.length}');
+    } catch (e) {
+      debugPrint('❌ Error saving restaurants to Hive: $e');
+    }
+  }
 
   // ================= Restaurant with logos ===================
   List<RestaurantModel> get restaurantsWithLogo {
     return restaurants
+        // ignore: unnecessary_null_comparison
         .where((r) => r.logo != null && r.logo!.trim().isNotEmpty)
         .toList();
   }
@@ -250,7 +270,6 @@ List<RestaurantModel> searchRestaurants(String query) {
 
   final items = [
     {"image": "assets/png_images/discount.png", "title": "Offers"},
-    {"image": "assets/png_images/basket.png", "title": "Mart"},
     {"image": "assets/png_images/food.png", "title": "New restaurants"},
     {"image": "assets/png_images/chef-hat.png", "title": "Homechef"},
     {"image": "assets/png_images/deal.png", "title": "Deals"},
@@ -260,14 +279,15 @@ List<RestaurantModel> searchRestaurants(String query) {
   final List<String> images = [
     "https://cdn.pixabay.com/photo/2018/07/14/21/30/club-sandwich-3538455_1280.jpg",
     "https://cdn.pixabay.com/photo/2020/10/05/21/30/hamburger-5630800_1280.jpg",
-    "https://cdn.pixabay.com/photo/2022/07/15/18/12/cheese-burger-7323672_1280.jpg"
+    "https://cdn.pixabay.com/photo/2022/07/15/18/12/cheese-burger-7323672_1280.jpg",
   ];
 
   final List<Map<String, dynamic>> categoryTitles = [
+    // ya hai wo list
     {
       "title": "Pizza",
       "image":
-          "https://www.allrecipes.com/thmb/fFW1o307WSqFFYQ3-QXYVpnFj6E=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/48727-Mikes-homemade-pizza-DDMFS-beauty-4x3-BG-2974-a7a9842c14e34ca699f3b7d7143256cf.jpg",
+          "https://www.foodandwine.com/thmb/iJw7N_NfcPpd-EB8rpYbzrkSFIM=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/tomato-mozzarella-pizza-FT-RECIPE0725-e7244e979c504188a049623668c15b2e.jpg",
     },
     {
       "title": "Burger",
@@ -277,27 +297,23 @@ List<RestaurantModel> searchRestaurants(String query) {
     {
       "title": "Biryani",
       "image":
-          "https://www.maggiarabia.com/sites/default/files/styles/srh_recipes/public/srh_recipes/30c29da8aec1403f42e82552d927abab.png?h=4f5b30f1&itok=7l1fu_HB",
+          "https://www.thespruceeats.com/thmb/XDBL9gA6A6nYWUdsRZ3QwH084rk=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/SES-chicken-biryani-recipe-7367850-hero-A-ed211926bb0e4ca1be510695c15ce111.jpg",
     },
     {
-      "title": "Pasta",
+      "title": "Fast Food",
       "image":
-          "https://www.yummytummyaarthi.com/wp-content/uploads/2022/11/red-sauce-pasta-1-500x500.jpg",
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0cFleHkr83XTp-0AALLRqiAOs7nZxme-OVQ&s",
     },
     {
+      "title": "Bakers",
+      "image":
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScEJLoIhxNHhsa3EscR0gNoEyc6cmOH0NR6Q&s",
+    },
+
+     {
       "title": "Ice Cream",
       "image":
-          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN_qnZySSopHYG9PIqtCTsKximDTTh4l2DRA&s",
-    },
-    {
-      "title": "Chowmein",
-      "image":
-          "https://i.ytimg.com/vi/gbygXUDbf2Q/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLCCbRvjuTJjSuiR5OSYJuE9AKfsDg",
-    },
-    {
-      "title": "Rice",
-      "image":
-          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbbHMLbVwAUDT7B-oqUxYbrZguIHbIckk3yQ&s",
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBgIoSm8wGUVBmnZ9AjOflrCu0ycqUObRhVw&s",
     },
   ];
 
@@ -305,15 +321,14 @@ List<RestaurantModel> searchRestaurants(String query) {
     _loadUserFromHive();
     loadFavoritesFromHive();
     scroll.addListener(_scrollListener);
+    startPromoTimer();
   }
 
   void _scrollListener() {
-    if (scroll.offset > 160 && !isSearchBarSticky) {
-      isSearchBarSticky = true;
-      notifyListeners();
-    } else if (scroll.offset <= 160 && isSearchBarSticky) {
-      isSearchBarSticky = false;
-      notifyListeners();
+    final shouldStick = scroll.offset > 160;
+
+    if (stickySearch.value != shouldStick) {
+      stickySearch.value = shouldStick;
     }
 
     if (scroll.position.pixels >= scroll.position.maxScrollExtent - 100) {
@@ -329,6 +344,7 @@ List<RestaurantModel> searchRestaurants(String query) {
   @override
   void dispose() {
     scroll.dispose();
+    _promoTimer?.cancel();
     super.dispose();
   }
 
@@ -433,7 +449,7 @@ List<RestaurantModel> searchRestaurants(String query) {
 
     clearUserData(); // 👈 reuse
 
-    isSearchBarSticky = false;
+    // isSearchBarSticky = false;
     notifyListeners();
   }
 
@@ -448,4 +464,104 @@ List<RestaurantModel> searchRestaurants(String query) {
     restaurantsFetched = false;
     notifyListeners();
   }
+
+  /// Reset sticky when leaving Home
+  void resetSticky() {
+    stickySearch.value = false;
+  }
+
+  void selectItem(String item) {
+    if (selectedItem == item) {
+      selectedItem = ""; // deselect
+    } else {
+      selectedItem = item;
+    }
+    notifyListeners();
+  }
+
+  void selectCategory(String category) {
+    if (selectedCategory == category) {
+      selectedCategory = ""; // deselect
+    } else {
+      selectedCategory = category;
+    }
+    notifyListeners();
+  }
+
+  List<RestaurantModel> get filteredRestaurants {
+    if (selectedCategory.isEmpty) return restaurants;
+
+    return restaurants.where((r) {
+      final name = r.name.toLowerCase();
+      final type = r.type.toLowerCase();
+      final cat = selectedCategory.toLowerCase();
+
+      return name.contains(cat) || type.contains(cat);
+    }).toList();
+  }
+
+
+void showPromoWithDelay() {
+  if (promoDismissed) return;
+
+  Future.delayed(const Duration(seconds: 3), () {
+    if (promoDismissed) return;
+
+    promoVisible = true;
+    startPromoTimer(); // ✅ Timer bhi start kar diya
+    notifyListeners();
+  });
+}
+
+
+
+
+
+  void dismissPromo() {
+    promoDismissed = true;
+    promoVisible = false;
+    notifyListeners();
+  }
+
+Timer? _promoTimer;
+int promoSeconds = 40 * 60; // 40 minutes
+
+void startPromoTimer() {
+  if (_promoTimer != null && _promoTimer!.isActive) return;
+
+  promoVisible = true;
+  _promoTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    if (promoSeconds > 0) {
+      promoSeconds--;
+      notifyListeners();
+    } else {
+      timer.cancel();
+      promoVisible = false;
+      notifyListeners();
+    }
+  });
+}
+
+void resetPromoTimer() {
+  promoSeconds = 40 * 60;
+  _promoTimer?.cancel();
+  startPromoTimer();
+  notifyListeners();
+}
+
+
+bool promoPopupShownThisSession = false;
+
+bool canShowPromoPopup() {
+  if (promoPopupShownThisSession) return false;
+
+  promoPopupShownThisSession = true;
+  return true;
+}
+
+
+
+
+
+
 }

@@ -14,9 +14,10 @@ class RestaurantViewModel extends ChangeNotifier {
   final logoUrl = TextEditingController();
   final location = TextEditingController();
 
+   Map<String, dynamic> locationMap = {};
+
   bool isLoading = false;
 
-  // Save restaurant to Firestore
   Future<void> saveRestaurant() async {
     if (name.text.isEmpty || imageUrl.text.isEmpty || type.text.isEmpty) return;
 
@@ -32,12 +33,11 @@ class RestaurantViewModel extends ChangeNotifier {
       type: type.text,
       image: imageUrl.text,
       logo: logoUrl.text,
-      location: location.text,
+      location: locationMap // yaha error araha hai
     );
 
     await _service.addRestaurant(restaurant);
 
-    // Clear controllers
     name.clear();
     rating.clear();
     deliveryFee.clear();
@@ -51,7 +51,32 @@ class RestaurantViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Stream of restaurants for Home screen
+
+
+Future<void> updateRestaurant(String restaurantId) async {
+  final updatedData = {
+    'name': name.text,
+    'rating': double.tryParse(rating.text) ?? 0,
+    'deliveryFee': double.tryParse(deliveryFee.text) ?? 0,
+    'deliveryTime': deliveryTime.text,
+    'type': type.text,
+    'image': imageUrl.text,
+    'logo': logoUrl.text,
+    'location': locationMap, // yahan map bhej rahe ho
+  };
+
+  await _service.updateRestaurant(restaurantId, updatedData);
+  notifyListeners();
+}
+
+
+
+  // ✅ Delete Restaurant
+  Future<void> deleteRestaurant(String restaurantId) async {
+    await _service.deleteRestaurant(restaurantId);
+    notifyListeners();
+  }
+
   Stream<List<RestaurantModel>> getRestaurants() {
     return _service.getRestaurants();
   }

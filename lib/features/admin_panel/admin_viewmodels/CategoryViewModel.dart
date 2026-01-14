@@ -13,11 +13,28 @@ class AddCategoryNameViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    final category = CategoryModel(id: '', name: categoryName.text, items: []);
+    final category = CategoryModel(
+      id: '', 
+      name: categoryName.text,
+      restaurantId: restaurantId, 
+      items: [],
+    );
     await _service.addCategory(restaurantId, category);
 
     categoryName.clear();
     isLoading = false;
+    notifyListeners();
+  }
+
+  // ✅ Update Category
+  Future<void> updateCategory(String restaurantId, String categoryId, String newName) async {
+    await _service.updateCategory(restaurantId, categoryId, newName);
+    notifyListeners();
+  }
+
+  // ✅ Delete Category
+  Future<void> deleteCategory(String restaurantId, String categoryId) async {
+    await _service.deleteCategory(restaurantId, categoryId);
     notifyListeners();
   }
 

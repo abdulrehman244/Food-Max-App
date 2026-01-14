@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:food_delivery_app/config/routes/app_pages.dart';
@@ -17,31 +18,65 @@ import 'package:food_delivery_app/features/auth/notification%20access/notificati
 import 'package:food_delivery_app/features/cart/cart_viewmodel.dart';
 import 'package:food_delivery_app/features/rest_detail_view/restaurant_detail_viewmodel.dart';
 import 'package:food_delivery_app/features/search/search_viewmodel.dart';
-import 'package:food_delivery_app/features/settings/theme_viewmodel.dart';
 import 'package:food_delivery_app/features/splash/onboarding/onboarding_viewmodel.dart';
 import 'package:food_delivery_app/features/auth/signup/signup_viewmodel.dart';
 import 'package:food_delivery_app/features/splash/splash_viewmodel.dart';
+import 'package:food_delivery_app/features/theme/theme_viewmodel.dart';
 import 'package:food_delivery_app/firebase_options.dart';
 import 'package:hive_ce_flutter/adapters.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 
+
+
+
+
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(
+  RemoteMessage message,
+) async {
+  await Firebase.initializeApp();
+
+  // 🔥 VERY IMPORTANT
+  await NotificationService.initializeNotification(
+    requestPermission: false,
+  );
+
+  await NotificationService.showSimpleNotification( 
+    title: message.notification?.title ?? "Notification",
+    body: message.notification?.body ?? "Message",
+  );
+}
+
+
+
+
+
+
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize notification service
-  await NotificationService.initializeNotification(); 
-  // Background message handler
+  // 🔥 REGISTER BACKGROUND HANDLER (VERY IMPORTANT)
+  FirebaseMessaging.onBackgroundMessage(
+    firebaseMessagingBackgroundHandler,
+  );
+
+  // 🔔 INIT NOTIFICATION (permission included)
+  await NotificationService.initializeNotification(
+    requestPermission: false,
+  );
 
   Directory dir = await getApplicationDocumentsDirectory(); 
   Hive.init(dir.path);
 
+  
+
   await HiveService.init();
 
-  /// 2️⃣ Cart box open
-  await Hive.openBox('cartBox');
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -57,7 +92,6 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
         ChangeNotifierProvider(create: (_) => RestaurantViewModel()),
         ChangeNotifierProvider(create: (_) => AddCategoryNameViewModel()),
-        ChangeNotifierProvider(create: (_) => AddCategoryItemViewModel()),
         ChangeNotifierProvider(create: (_) => NotificationAdminViewModel()),
         ChangeNotifierProvider(create: (_) => RestaurantDetailViewModel()),
         ChangeNotifierProvider(create: (_) => CartViewModel()),
@@ -77,23 +111,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final themeVm = Provider.of<ThemeViewModel>(context);
+       final themeVm = context.watch<ThemeViewModel>();
 
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      
+    theme: ThemeData(
         primaryColor: themeVm.appColor,
-        appBarTheme: AppBarTheme(backgroundColor: themeVm.appColor),
-        floatingActionButtonTheme:
-            FloatingActionButtonThemeData(backgroundColor: themeVm.appColor),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(backgroundColor: themeVm.appColor),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: themeVm.appColor,
         ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          selectedItemColor: themeVm.appColor,
+        appBarTheme: AppBarTheme(
+          backgroundColor: themeVm.appColor,
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: themeVm.appColor,
         ),
       ),
+   
+      // home: AdminPanelView(),
       initialRoute: AppRoutes.splash,
       routes: AppPages.routes,
     );

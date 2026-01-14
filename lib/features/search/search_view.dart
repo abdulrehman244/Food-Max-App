@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
-import 'package:food_delivery_app/core/services/hive_service.dart';
 import 'package:food_delivery_app/core/widgets/custom_restaurantcard.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'package:food_delivery_app/features/search/search_viewmodel.dart';
 
 class SearchView extends StatefulWidget {
   const SearchView({super.key});
@@ -14,188 +14,247 @@ class SearchView extends StatefulWidget {
 }
 
 class _SearchViewState extends State<SearchView> {
-  final controller = TextEditingController();
-
-
-  final hiveService = HiveService();
-List<Map<String, dynamic>> restaurants = HiveService().getRestaurants();
-
-
-
   final List<String> popularSearches = const [
     "pizza",
-    "kababjees bakers",
-    "california",
-    "ice cream",
-    "burger king",
+    "kababjees",
     "burger",
     "pizza hut",
-    "kababjees",
+    "ice cream",
+    "California pizza",
+    "Kababjees Bakers",
+    "Burger Lab",
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    /// 🔥 load Hive data ONLY ONCE
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SearchViewModel>().loadFromHive();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final model = context.watch<HomeViewModel>();
+    final searchVM = context.watch<SearchViewModel>();
+    final homeVM = context.watch<HomeViewModel>();
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
-        titleSpacing: 0,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: 
-            SearchBarWidget(controller),
-        ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: SingleChildScrollView(
-          child: 
-          controller.text.isNotEmpty ? 
-          ListView.builder(
-  itemCount: restaurants.length,
-  itemBuilder: (context, index) {
-    final restaurant = restaurants[index];
-    return ListTile(
-      title: Text(restaurant['name'] ?? 'No Name'),
-      subtitle: Text(restaurant['location'] ?? 'No Location'),
-      leading: Image.network(restaurant['image'] ?? ''),
-    );
-  },
-)
-
-          :
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
             children: [
-              const SizedBox(height: 20),
-              // Show recent searches if search bar is empty
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Recent searches",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-
-                  const SizedBox(height: 20),
-                  const Text(
-                    "Popular searches",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: popularSearches.map((item) {
-                      return GestureDetector(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(width: 1, color: Colors.grey),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            item,
-                            style: AppText.bodyMedium.copyWith(
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+              /// 🔙 BACK ARROW
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: searchVM.controller.text.isNotEmpty
+                    ? GestureDetector(
+                        key: const ValueKey("back"),
+                        onTap: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          searchVM.backButton();
+                        },
+                        child: const Icon(Icons.arrow_back),
+                      )
+                    : const SizedBox(key: ValueKey("empty"), width: 0),
               ),
 
-              // Show search results
-              SizedBox(height: 30),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: searchVM.controller.text.isNotEmpty ? 12 : 0,
+              ),
 
-              Text(
-                "Top Brands",
-                style: AppText.bodyLarge.copyWith(
-                  color: Colors.black,
-                  fontSize: 20,
+              /// 🔍 SEARCH FIELD
+              Expanded(
+                child: Container(
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: TextField(
+                      controller: searchVM.controller,
+                      onSubmitted: (_) => searchVM.openFilteredScreen(context),
+                      decoration: InputDecoration(
+                        hintText: 'Search by restaurant or item...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        isDense: true,
+                        suffixIcon: searchVM.isLoading
+                            ? Lottie.asset(
+                                "assets/lottie/search_load.json",
+                                height: 50,
+                                width: 50,
+                              )
+                            : GestureDetector(
+                                onTap: () => searchVM.backButton(),
+                                child: const Icon(
+                                  Icons.cancel_outlined,
+                                  size: 22,
+                                ),
+                              ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-
-              SizedBox(height: 15),
-
-              SizedBox(
-                height: 160,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: model.restaurantsWithLogo.length,
-                  itemBuilder: (context, index) {
-                    final r = model.restaurantsWithLogo[index];
-                    return TopBrandCard(
-                      restaurant: r,
-                      image: r.logo, // Firebase se logo
-                      name: r.name, // restaurant ka name
-                      city: "Karachi", // ya r.location
-                      time: "${r.deliveryTime} min",
-                    );
-                  },
-                ),
-              ),
-
-              // _SearchTile(title: "burder", subtitle: "in restaurant", icon: Icons.restaurant),
             ],
           ),
         ),
       ),
+
+      body: searchVM.controller.text.isEmpty
+          ? SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (searchVM.recentSearches.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10, top: 15),
+                      child: Text(
+                        "Recent searches",
+                        style: AppText.bodyLarge.copyWith(
+                          fontSize: 20,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: searchVM.recentSearches.length,
+                      itemBuilder: (context, index) {
+                        final item = searchVM.recentSearches[index];
+                        return ListTile(
+                          leading: const Icon(Icons.history),
+                          title: Text(item),
+                          trailing: IconButton(
+                            onPressed: () {
+                              searchVM.removeRecentItem(item);
+                            },
+                            icon: Icon(Icons.close),
+                          ),
+                          onTap: () {
+                            searchVM.selectRestaurantSuggestion(context, item,searchVM.filtered);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10, top: 15),
+                    child: Text(
+                      "Popular searches",
+                      style: AppText.bodyLarge.copyWith(
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: popularSearches.map((item) {
+                        return GestureDetector(
+                          onTap: () {
+                            searchVM.onPopularTap(item, context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(width: 1, color: Colors.grey),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              item,
+                              style: AppText.bodyMedium.copyWith(
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Text(
+                      "Top Brands",
+                      style: AppText.bodyLarge.copyWith(
+                        color: Colors.black,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 160,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: homeVM.restaurantsWithLogo.length,
+                      itemBuilder: (context, index) {
+                        final r = homeVM.restaurantsWithLogo[index];
+                        return TopBrandCard(
+                          restaurant: r,
+                          image: r.logo,
+                          name: r.name,
+                          city: "Karachi",
+                          time: "${r.deliveryTime} min",
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: searchVM.filtered.length,
+              itemBuilder: (context, index) {
+                final restaurant = searchVM.filtered[index];
+
+                return _SearchTile(
+                  title: restaurant['name'] ?? 'Unknown',
+                  subtitle: Text(
+                    restaurant['categories'] != null
+                        ? (restaurant['categories'] as List)
+                              .map((c) => c['title'])
+                              .join(', ')
+                        : '',
+                  ),
+                  icon: Icons.restaurant,
+                  searchQuery: searchVM.query,
+                  onPressed: () {
+                    searchVM.selectRestaurantSuggestion(
+                      context,
+                      restaurant['name'] ?? '',
+                      searchVM.filtered, // 🔹 current suggestions pass karo
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
-}
-
-
-
-Widget SearchBarWidget(TextEditingController controller, [bool isLoading = false]) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-    child: Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 15),
-      child: Row(
-        children: [
-          Icon(Icons.search, color: Colors.grey.shade600),
-          SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: TextField(
-                enabled: true,
-                controller: controller,
-                onChanged: (val) {},
-                decoration: InputDecoration(
-                  suffixIcon:  isLoading ? null : Lottie.asset(
-                    "assets/lottie/search_load.json",
-                    height: 50,
-                    width: 50,
-                  ),
-                  hintStyle: TextStyle(color: Colors.grey.shade600),
-                  hintText: "search",
-                  border: InputBorder.none,
-                  isDense: true,
-                ),
-                style: AppText.bodyMedium.copyWith(color: Colors.grey.shade800),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 
@@ -203,21 +262,50 @@ Widget SearchBarWidget(TextEditingController controller, [bool isLoading = false
 
 class _SearchTile extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final Widget subtitle;
   final IconData icon;
-  final String? boldPart;
+  final VoidCallback onPressed;
+  final String? searchQuery; // 🔥 yahan query bhejenge
 
   const _SearchTile({
     required this.title,
     required this.subtitle,
     required this.icon,
-    this.boldPart,
+    this.searchQuery,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    final lowerTitle = title.toLowerCase();
+    final lowerQuery = searchQuery?.toLowerCase() ?? '';
+
+    List<TextSpan> spans = [];
+
+    if (lowerQuery.isNotEmpty && lowerTitle.contains(lowerQuery)) {
+      int start = lowerTitle.indexOf(lowerQuery);
+      int end = start + lowerQuery.length;
+
+      // Before match
+      if (start > 0) {
+        spans.add(TextSpan(text: title.substring(0, start)));
+      }
+      // Match (bold)
+      spans.add(TextSpan(text: title.substring(start, end)));
+      // After match
+      if (end < title.length) {
+        spans.add(
+          TextSpan(
+            text: title.substring(end),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+      }
+    } else {
+      spans.add(TextSpan(text: title));
+    }
+
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 4),
       leading: Container(
         height: 44,
         width: 44,
@@ -225,11 +313,17 @@ class _SearchTile extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: Colors.grey),
+        child: Icon(icon, color: Colors.grey.shade600),
       ),
-      title: Text(title),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
-      onTap: () {},
+      title: RichText(
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          children: spans,
+        ),
+      ),
+      subtitle: subtitle,
+      onTap: onPressed,
     );
   }
 }

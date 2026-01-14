@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/config/routes/app_routes.dart';
+import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
+import 'package:food_delivery_app/features/auth/notification%20access/notification_view.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -65,18 +67,23 @@ class LocationViewModel extends ChangeNotifier {
     required BuildContext context,
     required String currentCity,
     VoidCallback? onCompleted,
+    final navigation,
   }) async {
     isLoading = true;
     notifyListeners();
 
     selectedLocation = latLng;
     selectedAddress = address;
-     this.currentCity = currentCity;
+    this.currentCity = currentCity;
 
     await _saveToFirestore(context);
 
     isLoading = false;
     notifyListeners();
+
+
+
+    // Nav.toAnimatedReplacement(context, NotificationView());
 
     onCompleted?.call(); // 🔥 VERY IMPORTANT
 
@@ -125,8 +132,10 @@ class LocationViewModel extends ChangeNotifier {
         },
       });
 
+      // Nav.toAnimatedReplacement(context, NotificationView());
+
       // 🔹 Navigate to Notification screen
-      Navigator.pushReplacementNamed(context, AppRoutes.notificationAccess);
+      // Navigator.pushReplacementNamed(context, AppRoutes.notificationAccess);
 
       isLoading = true;
       notifyListeners();

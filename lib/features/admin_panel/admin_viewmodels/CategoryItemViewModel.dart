@@ -7,6 +7,7 @@ class AddCategoryItemViewModel extends ChangeNotifier {
 
   final itemName = TextEditingController();
   final itemPrice = TextEditingController();
+  final itemOldPrice = TextEditingController(); // ✅ NEW
   final itemDescription = TextEditingController();
   final itemImage = TextEditingController();
 
@@ -22,17 +23,43 @@ class AddCategoryItemViewModel extends ChangeNotifier {
       name: itemName.text,
       image: itemImage.text,
       price: double.tryParse(itemPrice.text) ?? 0,
+      oldPrice: itemOldPrice.text.isNotEmpty
+          ? double.tryParse(itemOldPrice.text)
+          : null, // ✅ optional
       description: itemDescription.text,
+      restaurantId: restaurantId,
+      categoryId: categoryId,
     );
 
     await _service.addCategoryItem(restaurantId, categoryId, item);
 
     itemName.clear();
     itemPrice.clear();
+    itemOldPrice.clear();
     itemDescription.clear();
     itemImage.clear();
 
     isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> updateItem(
+    String restaurantId,
+    String categoryId,
+    String itemId,
+    Map<String, dynamic> updatedData,
+  ) async {
+    await _service.updateCategoryItem(
+      restaurantId,
+      categoryId,
+      itemId,
+      updatedData,
+    );
+    notifyListeners();
+  }
+
+  Future<void> deleteItem(String restaurantId, String categoryId, String itemId) async {
+    await _service.deleteCategoryItem(restaurantId, categoryId, itemId);
     notifyListeners();
   }
 

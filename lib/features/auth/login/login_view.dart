@@ -6,7 +6,6 @@ import 'package:food_delivery_app/features/bottom_navigation/bottom_navi.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import 'package:food_delivery_app/config/theme/app_color.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/features/auth/login/login_viewmodel.dart';
 import 'package:food_delivery_app/features/auth/signup/signup_view.dart';
@@ -91,8 +90,8 @@ class LoginView extends StatelessWidget {
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.appColor,
+                                        borderSide:  BorderSide(
+                                          color: Theme.of(context).primaryColor,
                                         ),
                                       ),
                                     ),
@@ -138,8 +137,8 @@ class LoginView extends StatelessWidget {
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.appColor,
+                                        borderSide:  BorderSide(
+                                          color: Theme.of(context).primaryColor,
                                         ),
                                       ),
                                     ),
@@ -160,10 +159,10 @@ class LoginView extends StatelessWidget {
                                       ),
                                       TextButton(
                                         onPressed: () {},
-                                        child: const Text(
+                                        child:  Text(
                                           "Forgot Password",
                                           style: TextStyle(
-                                            color: AppColors.appColor,
+                                            color: Theme.of(context).primaryColor,
                                           ),
                                         ),
                                       ),
@@ -175,7 +174,7 @@ class LoginView extends StatelessWidget {
                                     height: 50,
                                     child: ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.appColor,
+                                        backgroundColor: Theme.of(context).primaryColor,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             12,
@@ -197,14 +196,13 @@ class LoginView extends StatelessWidget {
                                                             .passwordController
                                                             .text ==
                                                         "9999999") {
-                                                  Nav.to(
+                                                  Nav.toAnimated(
                                                     context,
                                                     AdminPanelView(),
                                                   );
-                                                }else{
-                                                vm.loginUser(context);
+                                                } else {
+                                                  vm.loginUser(context);
                                                 }
-
                                               }
                                             },
                                       child: vm.isLoading
@@ -237,18 +235,13 @@ class LoginView extends StatelessWidget {
                                       const SizedBox(width: 10),
                                       GestureDetector(
                                         onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const SignupView(),
-                                            ),
-                                          );
+                                          Nav.toAnimated(context, SignupView());
+                                          
                                         },
                                         child: Text(
                                           "SIGN UP",
                                           style: AppText.bodyLarge.copyWith(
-                                            color: AppColors.appColor,
+                                            color: Theme.of(context).primaryColor,
                                             fontWeight: FontWeight.w800,
                                             fontSize: 16,
                                           ),
@@ -285,12 +278,9 @@ class LoginView extends StatelessWidget {
 
                                                 if (user != null) {
                                                   if (isNewUser) {
-                                                    Navigator.pushReplacement(
+                                                    Nav.toAnimatedReplacement(
                                                       context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            LocationView(),
-                                                      ),
+                                                      LocationView(),
                                                     );
                                                   } else {
                                                     await Provider.of<
@@ -300,12 +290,9 @@ class LoginView extends StatelessWidget {
                                                           listen: false,
                                                         )
                                                         .loadCurrentUser();
-                                                    Navigator.pushReplacement(
+                                                    Nav.toAnimatedReplacement(
                                                       context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            BottomNavi(),
-                                                      ),
+                                                      BottomNavi(),
                                                     );
                                                   }
                                                 }

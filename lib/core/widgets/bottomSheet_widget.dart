@@ -67,7 +67,8 @@ class PromoBottomSheet extends StatelessWidget {
                                     "${r.deliveryTime} min • \$\$ • ${r.type}",
                                 price: "From ${r.deliveryFee} With Saver",
                                 restaurant: r,
-                                container: Container(
+                                container:
+                                 Container(
                                   padding: EdgeInsets.symmetric(horizontal: 5),
                                   height: 20,
                                   width: 165,
@@ -96,6 +97,9 @@ class PromoBottomSheet extends StatelessWidget {
                                     ],
                                   ),
                                 ),
+
+
+
 
                                 width: double.infinity,
                               );

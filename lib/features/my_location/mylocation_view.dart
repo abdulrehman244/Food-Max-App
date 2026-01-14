@@ -93,6 +93,9 @@ class MylocationView extends StatelessWidget {
           ),
         ),
       ),
+     
+     
+     
       body: locationVM.isLoading
             ?  Center(child: Lottie.asset("assets/lottie/loader.json",height: 100,width: 100))
             : Padding(

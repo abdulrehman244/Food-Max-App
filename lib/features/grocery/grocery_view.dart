@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:food_delivery_app/config/theme/app_color.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/widgets/custom_searchbar.dart';
@@ -13,11 +12,11 @@ class GroceryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.appColor,
+      color: Theme.of(context).primaryColor,
       child: SafeArea(
         // ignore: deprecated_member_use
         child: Scaffold(
-          backgroundColor: AppColors.appColor,
+          backgroundColor: Theme.of(context).primaryColor,
           body: Consumer<HomeViewModel>(
             builder: (context, homeVm, child) => 
              Column(
@@ -26,7 +25,7 @@ class GroceryView extends StatelessWidget {
                 Container(
                   height: 130,
                   padding: const EdgeInsets.only(left: 10, right: 10, top: 10),
-                  color: AppColors.appColor,
+                  color: Theme.of(context).primaryColor,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -36,7 +35,7 @@ class GroceryView extends StatelessWidget {
                           Icon(
                             Icons.location_on_outlined,
                             size: 30,
-                            color: AppColors.topTextColor,
+                            color: Colors.white,
                           ),
                           SizedBox(width: 5),
                           GestureDetector(
@@ -53,7 +52,7 @@ class GroceryView extends StatelessWidget {
                                       style: AppText.titleLarge.copyWith(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.topTextColor,
+                                        color: Colors.white,
                                       ),
                                        maxLines: 1,
                                        overflow: TextOverflow.ellipsis,
@@ -62,7 +61,7 @@ class GroceryView extends StatelessWidget {
                                   Text(
                                     "${homeVm.userCity}, Pakistan",
                                     style: AppText.bodyMedium.copyWith(
-                                      color: AppColors.topTextColor,
+                                      color: Colors.white,
                                     ),
                                   ),
                               ],
@@ -76,7 +75,7 @@ class GroceryView extends StatelessWidget {
                             icon: Icon(
                               Icons.favorite_border_outlined,
                               size: 30,
-                              color: AppColors.topTextColor,
+                              color:Colors.white,
                             ),
                           ),
                         ],
@@ -180,19 +179,12 @@ Widget grocerycard(String image,String prize, String description) {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300,width: 1),
             image: DecorationImage(
               image: NetworkImage(
                 image,
               ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 2,
-                spreadRadius: 1,
-                offset: Offset(0, 1), // 👈 Shadow bottom ki taraf
-              ),
-            ],
           ),
         ),
         SizedBox(width: 20),

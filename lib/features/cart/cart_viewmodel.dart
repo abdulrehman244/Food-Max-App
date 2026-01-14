@@ -1,144 +1,191 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive_ce_flutter/adapters.dart';
 import 'package:food_delivery_app/core/services/hive_service.dart';
 
 class CartViewModel extends ChangeNotifier {
-  final HiveService _cartService = HiveService();
+  final List<Map<String, dynamic>> _cart = [];
+  List<Map<String, dynamic>> get cart => _cart;
 
-  /// cart list jo UI ko milegi
-  List<Map<String, dynamic>> _cartItems = [];
+  CartViewModel() {
+    loadCart();
+  }
 
-  List<Map<String, dynamic>> get cartItems => _cartItems;
+
+/// ================= REFRESH CART =================
+Future<void> refreshCart() async {
+  await loadCart(); // Cart load karke _cart update karenge
+}
+
+/// ================= PLACE ORDER =================
+Future<void> placeOrder(String restaurantId) async {
+  // HiveService se order place karo
+  await HiveService().placeOrderForRestaurant(restaurantId: restaurantId);
+
+  // Cart reload karo taake UI update ho
+  await refreshCart(); 
+}
 
 
-  bool _showSheet = false;
-  bool get showSheet => _showSheet;
 
-  Map<String, dynamic>? _selectedItem;
-  Map<String, dynamic>? get selectedItem => _selectedItem;
+/// ================= INCREASE QTY =================
+Future<void> increaseQty(String restaurantId, String itemId) async {
+  final restIndex = _cart.indexWhere((r) => r['restaurantId'] == restaurantId);
+  if (restIndex != -1) {
+    final items = List<Map<String, dynamic>>.from(_cart[restIndex]['items']);
+    final itemIndex = items.indexWhere((i) => i['itemId'] == itemId);
+    if (itemIndex != -1) {
+      items[itemIndex]['qty'] = (items[itemIndex]['qty'] ?? 1) + 1;
+      _cart[restIndex]['items'] = items;
+      await _saveFullCart();
+      notifyListeners();
+    }
+  }
+}
 
-  // 🔥 TEMP QUANTITY (Item detail ke liye)
-  int _tempQuantity = 1;
-  int get tempQuantity => _tempQuantity;
-
-  // ================= QUANTITY CONTROLS =================
   bool isSwitched = false;
 
-  void toggle(bool value) {
+  void toggleSwitch(bool value) {
     isSwitched = value;
     notifyListeners();
   }
 
-  void increaseQuantity() {
-    _tempQuantity++;
-    notifyListeners();
-  }
+/// ================= DECREASE QTY =================
+Future<void> decreaseQty(String restaurantId, String itemId) async {
+  final restIndex = _cart.indexWhere((r) => r['restaurantId'] == restaurantId);
+  if (restIndex != -1) {
+    final items = List<Map<String, dynamic>>.from(_cart[restIndex]['items']);
+    final itemIndex = items.indexWhere((i) => i['itemId'] == itemId);
+    if (itemIndex != -1) {
+      final currentQty = items[itemIndex]['qty'] ?? 1;
+      if (currentQty > 1) {
+        items[itemIndex]['qty'] = currentQty - 1;
+      } else {
+        // remove item if qty == 1
+        items.removeAt(itemIndex);
+      }
 
-  void decreaseQuantity() {
-    if (_tempQuantity > 1) {
-      _tempQuantity--;
+      if (items.isEmpty) {
+        _cart.removeAt(restIndex);
+      } else {
+        _cart[restIndex]['items'] = items;
+      }
+
+      await _saveFullCart();
       notifyListeners();
     }
   }
+}
 
-  void updateItemQuantity(String name, int newQuantity) {
-    for (var item in _cartItems) {
-      if (item['name'] == name) {
-        item['quantity'] = newQuantity;
-        _cartService.updateItemQuantity(name, newQuantity); // ✅ Hive me update
-        break;
-      }
+
+
+
+  /// ✅ Check if item is already in cart
+  bool isItemInCart(String itemId) {
+    for (var rest in _cart) {
+      final items = List<Map<String, dynamic>>.from(rest['items'] ?? []);
+      if (items.any((i) => i['itemId'] == itemId)) return true;
     }
+    return false;
+  }
+
+
+  /// ================= LOAD CART =================
+Future<void> loadCart() async {
+  _cart.clear();
+
+  final box = Hive.box(HiveService.cartBoxName);
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? "guest";
+  final stored = box.get('cart_$uid');
+
+  if (stored != null && stored is Map) {
+    stored.forEach((key, value) {
+      try {
+        final restMap = Map<String, dynamic>.from(value as Map);
+        final items = (restMap['items'] as List? ?? [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        restMap['items'] = items;
+        _cart.add(restMap);
+      } catch (e) {
+        debugPrint("Cart parse error: $e");
+      }
+    });
+  }
+
+  notifyListeners();
+}
+
+
+  /// ================= ADD TO CART =================
+  Future<void> addToCart({
+    required String restaurantId,
+    required String restaurantName,
+    required String restaurantImage,
+    required Map<String, dynamic> restaurantLocation,
+    required Map<String, dynamic> item,
+  }) async {
+    final restIndex =
+        _cart.indexWhere((r) => r['restaurantId'] == restaurantId);
+
+    if (restIndex != -1) {
+      final items =
+          List<Map<String, dynamic>>.from(_cart[restIndex]['items']);
+
+      final itemIndex =
+          items.indexWhere((i) => i['itemId'] == item['itemId']);
+
+      if (itemIndex != -1) {
+        items[itemIndex]['qty'] =
+            (items[itemIndex]['qty'] ?? 1) + (item['qty'] ?? 1);
+      } else {
+        items.add(item);
+      }
+
+      _cart[restIndex]['items'] = items;
+    } else {
+      _cart.add({
+        "restaurantId": restaurantId,
+        "restaurantName": restaurantName,
+        "restaurantImage": restaurantImage,
+        "restaurantLocation": restaurantLocation,
+        "items": [item],
+      });
+    }
+
+    await _saveFullCart();
     notifyListeners();
   }
 
-  void resetQuantity() {
-    _tempQuantity = 1;
+  /// ================= REMOVE ITEM =================
+  Future<void> removeItem(String itemId) async {
+    _cart.removeWhere((rest) {
+      rest['items'].removeWhere((i) => i['itemId'] == itemId);
+      return rest['items'].isEmpty;
+    });
+
+    await _saveFullCart();
     notifyListeners();
   }
-
-  // ========================== SHOW BOTTOM SHEET =================
-  void openSheet(Map<String, dynamic> item) {
-    _selectedItem = item;
-    _showSheet = true;
-    notifyListeners();
-  }
-
-  void closeSheet() {
-    _selectedItem = null;
-    _showSheet = false;
-    notifyListeners();
-  }
-
-  //================================================================
-
-  //====================
-  /// LOAD CART FROM HIVE
-  /// ==========================
-  void loadCart() {
-    _cartItems = _cartService.getCartItems();
-    notifyListeners();
-  }
-
-  /// ==========================
-  /// ADD ITEM
-  /// ==========================
-  void addToCart({
-    required String name,
-    required String image,
-    required double price,
-  }) {
-    _cartService.addItemToCart(
-      name: name,
-      image: image,
-      price: price,
-      quantity: _tempQuantity,
-    );
-    loadCart();
-  }
-
-  /// ==========================
-  /// REMOVE ITEM
-  /// ==========================
-  void removeFromCart(String name) {
-    _cartService.removeItemFromCart(name);
-    loadCart();
-    closeSheet();
-  }
-
-  /// ==========================
-  /// CLEAR CART (LOGOUT)
-  /// ==========================
-  void clearCart() {
-    _cartService.clearCartOnLogout();
-    _cartItems = [];
-    notifyListeners();
-  }
-
-  /// ==========================
-  /// TOTAL PRICE (OPTIONAL)
-  /// ==========================
-  /// 
 
   
 
-  double get totalPrice {
-    double total = 0;
-    for (var item in _cartItems) {
-      total += item['price'] * item['quantity'] + 114;
+  /// ================= REMOVE RESTAURANT =================
+  Future<void> removeRestaurant(String restaurantId) async {
+    _cart.removeWhere((r) => r['restaurantId'] == restaurantId);
+    await _saveFullCart();
+    notifyListeners();
+  }
+
+  /// ================= SAVE TO HIVE =================
+  Future<void> _saveFullCart() async {
+    final Map<String, dynamic> map = {};
+    for (var rest in _cart) {
+      map[rest['restaurantId']] = rest;
     }
-    return total;
+
+    final box = Hive.box(HiveService.cartBoxName);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? "guest";
+    await box.put('cart_$uid', map);
   }
-
-  double get finalTotal {
-  double total = totalPrice;
-
-  if (isSwitched) {
-    total -= 200;
-  }
-
-  if (total < 0) total = 0; // safety
-
-  return total;
-}
-
 }

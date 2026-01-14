@@ -1,14 +1,37 @@
-// ignore_for_file: invalid_use_of_visible_for_testing_member
-
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/features/admin_panel/admin_viewmodels/restaurant_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:food_delivery_app/core/widgets/custom_textFiled.dart';
 import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/config/localization/google_map.dart';
+import 'package:food_delivery_app/data/models/restaurant_model.dart';
 
-class AddRestaurantView extends StatelessWidget {
-  const AddRestaurantView({super.key});
+class AddRestaurantView extends StatefulWidget {
+  final String? restaurantId;
+  final RestaurantModel? existingData;
+
+  const AddRestaurantView({super.key, this.restaurantId, this.existingData});
+
+  @override
+  State<AddRestaurantView> createState() => _AddRestaurantViewState();
+}
+
+class _AddRestaurantViewState extends State<AddRestaurantView> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingData != null) {
+      final model = context.read<RestaurantViewModel>();
+      model.name.text = widget.existingData!.name;
+      model.rating.text = widget.existingData!.rating.toString();
+      model.deliveryFee.text = widget.existingData!.deliveryFee.toString();
+      model.deliveryTime.text = widget.existingData!.deliveryTime;
+      model.type.text = widget.existingData!.type;
+      model.imageUrl.text = widget.existingData!.image;
+      model.logoUrl.text = widget.existingData?.logo ?? "";
+      model.locationMap = widget.existingData!.location; // <-- existing map
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,14 +39,17 @@ class AddRestaurantView extends StatelessWidget {
       builder: (context, model, _) {
         return SafeArea(
           child: Scaffold(
-            appBar: AppBar(title: const Text("Add Restaurant")),
+            appBar: AppBar(
+                title: Text(widget.restaurantId != null
+                    ? "Edit Restaurant"
+                    : "Add Restaurant")),
             body: Padding(
               padding: const EdgeInsets.all(10.0),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Restaurant Image Container
+                    // Image Container
                     Container(
                       height: 170,
                       width: double.infinity,
@@ -42,24 +68,19 @@ class AddRestaurantView extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Image URL Field
                     CustomTextField(
                       controller: model.imageUrl,
                       labelText: "Restaurant Image URL",
                       suffixIcon: GestureDetector(
                         onTap: () {
-                          if (model.imageUrl.text.isNotEmpty) {
-                            // Update container preview
-                            // ignore: invalid_use_of_protected_member
-                            model.notifyListeners();
-                          }
+                          // ignore: invalid_use_of_visible_for_testing_member
+                          if (model.imageUrl.text.isNotEmpty) model.notifyListeners();
                         },
                         child: const Icon(Icons.done, color: Colors.green),
                       ),
                     ),
                     const SizedBox(height: 10),
 
-                    // Logo Image Container
                     Container(
                       height: 70,
                       width: 70,
@@ -78,82 +99,64 @@ class AddRestaurantView extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Logo URL Field
                     CustomTextField(
                       controller: model.logoUrl,
                       labelText: "Logo Image URL (Optional)",
                       suffixIcon: GestureDetector(
                         onTap: () {
-                          if (model.logoUrl.text.isNotEmpty) {
-                            // Update logo preview
-                            // ignore: invalid_use_of_protected_member
-                            model.notifyListeners();
-                          }
+                          // ignore: invalid_use_of_visible_for_testing_member
+                          if (model.logoUrl.text.isNotEmpty) model.notifyListeners();
                         },
                         child: const Icon(Icons.done, color: Colors.green),
                       ),
                     ),
                     const SizedBox(height: 10),
 
-                    // Restaurant Name
-                    CustomTextField(
-                      controller: model.name,
-                      labelText: "Restaurant Name",
-                    ),
+                    CustomTextField(controller: model.name, labelText: "Restaurant Name"),
                     const SizedBox(height: 10),
-                    CustomTextField(
-                      controller: model.rating,
-                      labelText: "Rating",
-                    ),
+                    CustomTextField(controller: model.rating, labelText: "Rating"),
                     const SizedBox(height: 10),
-                    CustomTextField(
-                      controller: model.deliveryFee,
-                      labelText: "Delivery Fee",
-                    ),
+                    CustomTextField(controller: model.deliveryFee, labelText: "Delivery Fee"),
                     const SizedBox(height: 10),
-                    CustomTextField(
-                      controller: model.deliveryTime,
-                      labelText: "Delivery Time",
-                    ),
+                    CustomTextField(controller: model.deliveryTime, labelText: "Delivery Time"),
                     const SizedBox(height: 10),
-                    CustomTextField(
-                      controller: model.type,
-                      labelText: "Restaurant Type",
-                    ),
+                    CustomTextField(controller: model.type, labelText: "Restaurant Type"),
                     const SizedBox(height: 20),
 
-                    // Location Field
-                    CustomTextField(
-                      controller: model.location,
-                      labelText: "Location Detail",
-                    ),
-                    const SizedBox(height: 10),
                     MyButton(
-                      title: "Add Google Map Location",
+                      title: "Select Google Map Location",
                       ontap: () async {
                         final result = await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const GoogleMapView(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const GoogleMapView()),
                         );
                         if (result != null) {
-                          model.location.text =
-                              "${result['address']} (Lat: ${result['lat']}, Lng: ${result['lng']})";
+                          model.locationMap = {
+                            "address": result['address'],
+                            "lat": result['lat'],
+                            "lng": result['lng'],
+                          };
                         }
                       },
                     ),
                     const SizedBox(height: 20),
 
-                    // Add Restaurant Button
-                    MyButton(
-                      title: model.isLoading ? "Saving..." : "Add Restaurant",
-                      ontap: () {
-                        if (!model.isLoading) {
-                          model.saveRestaurant();
-                        }
-                      },
-                    ),
+                  MyButton(
+  title: model.isLoading ? "Saving..." : widget.restaurantId != null ? "Update Restaurant" : "Add Restaurant",
+  ontap: () {
+    if (!model.isLoading) {
+      if (widget.restaurantId != null) {
+        model.updateRestaurant(widget.restaurantId!); // ab error nahi aayega
+      } else {
+        model.saveRestaurant();
+      }
+    }
+  },
+),
+
+                  
+                  
+                  
                   ],
                 ),
               ),

@@ -1,8 +1,8 @@
-// ignore: file_names
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
+import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
 
 // ignore: must_be_immutable
 class PromoFixedBar extends StatefulWidget {
@@ -11,54 +11,18 @@ class PromoFixedBar extends StatefulWidget {
   Widget? icon;
   double? height;
 
-   PromoFixedBar({super.key, required this.onTap,this.icon,this.height,this.onTimeUp});
+  PromoFixedBar({super.key, required this.onTap, this.icon, this.height, this.onTimeUp});
 
   @override
   State<PromoFixedBar> createState() => _PromoFixedBarState();
 }
 
 class _PromoFixedBarState extends State<PromoFixedBar> {
-  Timer? _timer;
-  int _seconds = 40 * 60;
-
-void startTimer() {
-  _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-    if (_seconds > 0) {
-      setState(() {
-        _seconds--;
-      });
-    } else {
-      _timer?.cancel();
-      if (widget.onTimeUp != null) {
-        widget.onTimeUp!(); // 👈 notify parent to hide
-      }
-    }
-  });
-}
-
-
-  String formatTime(int seconds) {
-    int minutes = seconds ~/ 60;
-    int secs = seconds % 60;
-    String minutesStr = minutes.toString().padLeft(2, '0');
-    String secondsStr = secs.toString().padLeft(2, '0');
-    return "$minutesStr:$secondsStr";
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    startTimer();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<HomeViewModel>(); // ✅ Use ViewModel for timer
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -117,7 +81,7 @@ void startTimer() {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                (_seconds ~/ 60).toString().padLeft(2, '0'), // minutes
+                (vm.promoSeconds ~/ 60).toString().padLeft(2, '0'), // minutes
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -144,7 +108,7 @@ void startTimer() {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                (_seconds % 60).toString().padLeft(2, '0'), // seconds
+                (vm.promoSeconds % 60).toString().padLeft(2, '0'), // seconds
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -157,7 +121,12 @@ void startTimer() {
               mainAxisSize: MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                 InkWell(onTap: () {}, child: widget.icon ?? SizedBox()),
+                InkWell(
+                  onTap: () {
+                    vm.dismissPromo(); // ✅ Close button works
+                  },
+                  child: widget.icon ?? SizedBox(),
+                ),
                 SizedBox(height: 60),
               ],
             ),
@@ -167,5 +136,3 @@ void startTimer() {
     );
   }
 }
-
-

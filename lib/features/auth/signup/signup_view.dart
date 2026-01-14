@@ -2,12 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/helpers/snackbar_helper.dart';
+import 'package:food_delivery_app/features/auth/location%20access/location_view.dart';
 import 'package:food_delivery_app/features/auth/signup/signup_viewmodel.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import 'package:food_delivery_app/config/routes/app_routes.dart';
-import 'package:food_delivery_app/config/theme/app_color.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 
 class SignupView extends StatelessWidget {
@@ -101,8 +101,8 @@ class SignupView extends StatelessWidget {
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.appColor,
+                                      borderSide:  BorderSide(
+                                        color: Theme.of(context).primaryColor,
                                       ),
                                     ),
                                   ),
@@ -144,8 +144,8 @@ class SignupView extends StatelessWidget {
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.appColor,
+                                      borderSide:  BorderSide(
+                                        color: Theme.of(context).primaryColor,
                                       ),
                                     ),
                                   ),
@@ -192,8 +192,8 @@ class SignupView extends StatelessWidget {
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.appColor,
+                                      borderSide:  BorderSide(
+                                        color: Theme.of(context).primaryColor,
                                       ),
                                     ),
                                   ),
@@ -216,12 +216,12 @@ class SignupView extends StatelessWidget {
                                   child: vm.isLoading
                                       ? Lottie.asset(
                                           "assets/lottie/loader.json",
-                                          height: 70,
-                                          width: 70,
+                                          height: 80,
+                                          width: 80,
                                         )
                                       : ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.appColor,
+                                            backgroundColor: Theme.of(context).primaryColor,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12),
@@ -255,11 +255,15 @@ class SignupView extends StatelessWidget {
                                               vm.emailController.clear();
                                               vm.nameController.clear();
                                               vm.passwordController.clear();
-
-                                              Navigator.pushReplacementNamed(
+                                              Nav.toAnimatedReplacement(
                                                 context,
-                                                AppRoutes.locationAccess,
+                                                LocationView(),
                                               );
+
+                                              // Navigator.pushReplacementNamed(
+                                              //   context,
+                                              //   AppRoutes.locationAccess,
+                                              // );
                                             } else {
                                               print(
                                                 "SignupView: Signup failed with error: ${vm.errorMessage}",

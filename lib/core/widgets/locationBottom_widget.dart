@@ -4,7 +4,6 @@ import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:food_delivery_app/features/my_location/mylocation_view.dart';
-import 'package:food_delivery_app/features/settings/theme_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 class LocationConfirmBottomSheet extends StatelessWidget {
@@ -13,12 +12,12 @@ class LocationConfirmBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final homeVm = context.watch<HomeViewModel>();
-    final vm = context.watch<ThemeViewModel>();
+    // final vm = context.watch<ThemeViewModel>();
 
     return SafeArea(
       top: false,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.50,
+        height: MediaQuery.of(context).size.height * 0.45,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -79,36 +78,37 @@ class LocationConfirmBottomSheet extends StatelessWidget {
               ),
 
               // 📍 USE CURRENT LOCATION
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.near_me_outlined,
-                    color: Colors.black,
-                  ),
-                  title: Text(
-                    "Use my current location",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Nav.to(context, MylocationView());
-                  },
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.symmetric(horizontal: 20),
+              //   child: ListTile(
+              //     contentPadding: EdgeInsets.zero,
+              //     leading: const Icon(
+              //       Icons.near_me_outlined,
+              //       color: Colors.black,
+              //     ),
+              //     title: Text(
+              //       "Use my current location",
+              //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              //     ),
+              //     onTap: () {
+              //       Nav.to(context, MylocationView());
+              //     },
+              //   ),
+              // ),
 
-              const SizedBox(height: 10),
+              // const SizedBox(height: 10),
 
               // 📍 SELECTED LOCATION CARD
               GestureDetector(
                 onTap: () {
-                  vm.toggle();
+                  // vm.toggle();
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: vm.isSelected ? Colors.grey.shade200 : Colors.white,
+                    color: Colors.white 
+                    // vm.isSelected ? Colors.grey.shade200 : Colors.white,
                   ),
                   child: Row(
                     children: [
@@ -117,11 +117,16 @@ class LocationConfirmBottomSheet extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            homeVm.userAddress,
-                            style: AppText.titleLarge.copyWith(
-                              color: Colors.black,
-                              fontSize: 16,
+                          SizedBox(
+                            width: 300,
+                            child: Text(
+                              homeVm.userAddress,
+                              style: AppText.titleLarge.copyWith(
+                                color: Colors.black,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
@@ -146,7 +151,7 @@ class LocationConfirmBottomSheet extends StatelessWidget {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 onTap: () {
-                    Nav.to(context, MylocationView());
+                  Nav.to(context, MylocationView());
                 },
               ),
 

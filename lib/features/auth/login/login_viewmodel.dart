@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/helpers/snackbar_helper.dart';
 import 'package:food_delivery_app/core/services/auth_service.dart';
 import 'package:food_delivery_app/core/services/google_signin_service.dart';
@@ -61,10 +62,8 @@ class LoginViewmodel extends ChangeNotifier {
         passwordController.clear();
         rememberMe = false;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => BottomNavi()),
-        );
+        Nav.toAnimatedReplacement(context, BottomNavi());
+
       } else {
         print("LOGIN VIEWMODEL: Returned NULL user");
         SnackbarHelper.showError(context, "Login failed");

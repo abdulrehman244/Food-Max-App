@@ -1,7 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:food_delivery_app/config/theme/app_color.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/core/widgets/buildTimeline_widget.dart';
@@ -9,15 +8,44 @@ import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:food_delivery_app/features/bottom_navigation/bottom_navi.dart';
 import 'package:food_delivery_app/features/cart/cart_viewmodel.dart';
 import 'package:food_delivery_app/features/check_out/check_outview.dart';
-import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 class ConfirmOrderview extends StatelessWidget {
-  const ConfirmOrderview({super.key});
+  final String restaurantId;
+
+  const ConfirmOrderview({super.key, required this.restaurantId});
 
   @override
   Widget build(BuildContext context) {
-    final cartViewModel = context.read<CartViewModel>();
+    final cartVm = context.watch<CartViewModel>();
+
+
+  final restaurant = cartVm.cart.firstWhere(
+  (r) => r["restaurantId"] == restaurantId,
+  orElse: () => {},
+);
+
+if (restaurant.isEmpty) {
+  return const Scaffold(
+    body: Center(
+      child: Text(
+        "Cart is empty",
+        style: TextStyle(fontSize: 16),
+      ),
+    ),
+  );
+}
+
+
+    final List items = restaurant["items"];
+
+    double subTotal = 0;
+
+    for (var item in items) {
+      final price = (item["price"] as num).toDouble();
+      final qty = (item["qty"] as num).toInt();
+      subTotal += price * qty;
+    }
 
     return Container(
       color: Colors.white,
@@ -51,8 +79,7 @@ class ConfirmOrderview extends StatelessWidget {
                 child: buildTimeline(),
               ),
             ),
-            bottomNavigationBar:
-             Container(
+            bottomNavigationBar: Container(
               height: 150,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -92,34 +119,37 @@ class ConfirmOrderview extends StatelessWidget {
                           ),
                         ),
                         Spacer(),
+
+                        cartVm.isSwitched ?  
+
                         Column(
                           children: [
-                            cartViewModel.isSwitched ? 
-                                 Text(
-                                    cartVm.finalTotal.toStringAsFixed(2),
-                                    style: AppText.bodyLarge.copyWith(
-                                      color: Colors.pink,
-                                      fontSize: 16,
-                                    ),
-                                  ) :
                             Text(
-                                    cartVm.totalPrice.toStringAsFixed(2),
-                                    style: AppText.bodyLarge.copyWith(
-                                      color: Colors.black,
-                                      fontSize: 16,
+                                    "Rs. ${subTotal - 430}0",
+                                    style:  TextStyle(
+                                      fontSize: 18,
+                                      color: Theme.of(context).primaryColor,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                
-                            cartViewModel.isSwitched ? Text(
-                               cartVm.totalPrice.toStringAsFixed(2),
-                              style: TextStyle(
-                                fontSize: 16,
-                                decoration: TextDecoration.lineThrough,
-                                color: Colors.grey,
-                              ),
-                            ) : SizedBox(),
+                           Text(
+                      "Rs. ${subTotal}",
+                      style: const TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey,
+                         fontSize: 18
+                      ),
+                    ),
                           ],
-                        ),
+                        )  : Text(
+                                    "Rs. ${subTotal + 150}0",
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ) 
+
+                      
                       ],
                     ),
                   ),
@@ -130,17 +160,24 @@ class ConfirmOrderview extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: MyButton(
-                      title: "Confirm payment and address",
-                      ontap: () {
-                        Nav.to(context, CheckoutScreen());
-                      },
-                    ),
+  title: "Confirm payment and address",
+  ontap: () {
+    
+    Nav.toAnimated(
+      context,
+      CheckoutScreen(
+        restaurantId: restaurantId,
+      ),
+    );
+  },
+),
+
+
                   ),
                   SizedBox(height: 5),
                 ],
               ),
             ),
-
 
             body: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -150,150 +187,151 @@ class ConfirmOrderview extends StatelessWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _deliveryCard(),
+                      child: _deliveryCard(context),
                     ),
                     const SizedBox(height: 16),
 
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: cartVm.cartItems.length,
-                      itemBuilder: (context, index) {
-                        final item = cartVm.cartItems[index];
+                    Column(
+                      children: [
+                        /// ================= ITEMS LIST =================
+                        ...items.map<Widget>((item) {
+                          final mapItem = Map<String, dynamic>.from(item);
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 15,
-                            vertical: 10,
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // IMAGE
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: CachedNetworkImage(
-                                      imageUrl: item['image'] ?? "",
-                                      height: 50,
-                                      width: 50,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        height: 50,
-                                        width: 50,
-                                        color: Colors.grey.shade300,
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Icon(Icons.error),
-                                    ),
-                                  ),
-                                  SizedBox(width: 20),
+                          final int qty = (mapItem["qty"] as num).toInt();
+                          final double price = (mapItem["price"] as num)
+                              .toDouble();
+                          final double itemTotal = price * qty;
 
-                                  // NAME + PRICE + QUANTITY
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item['name'],
-                                          style: AppText.bodyLarge.copyWith(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        SizedBox(height: 15),
-                                        Row(
-                                          children: [
-                                            // DECREASE BUTTON
-                                            Container(
-                                              height: 38,
-                                              width: 117,
-                                              decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  width: 1,
-                                                  color: Colors.grey,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(30),
-                                              ),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                mainAxisSize: MainAxisSize.max,
-                                                children: [
-                                                  IconButton(
-                                                    icon: item["quantity"] == 1
-                                                        ? Icon(
-                                                            FontAwesomeIcons
-                                                                .trashCan,
-                                                            size: 16,
-                                                          )
-                                                        : Icon(Icons.remove),
-                                                    onPressed: () {
-                                                      if (item['quantity'] >
-                                                          1) {
-                                                        cartVm
-                                                            .updateItemQuantity(
-                                                              item['name'],
-                                                              item['quantity'] -
-                                                                  1,
-                                                            );
-                                                      } else {
-                                                        cartVm.removeFromCart(
-                                                          item['name'],
-                                                        );
-                                                      }
-                                                    },
-                                                  ),
-                                                  // QUANTITY
-                                                  Text(
-                                                    item['quantity'].toString(),
-                                                    style: AppText.bodyLarge
-                                                        .copyWith(
-                                                          color: Colors.black,
-                                                          fontSize: 16,
-                                                        ),
-                                                  ),
+                   return 
+                   Column(
+                     children: [
+                       Container(
+                         margin: const EdgeInsets.only(bottom: 14),
+                         padding: const EdgeInsets.all(12),
+                         child: Row(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                       
+                             /// IMAGE
+                             ClipRRect(
+                               borderRadius: BorderRadius.circular(8),
+                               child: Image.network(
+                                 mapItem["image"],
+                                 height: 60,
+                                 width: 60,
+                                 fit: BoxFit.cover,
+                               ),
+                             ),
+                       
+                             const SizedBox(width: 12),
+                       
+                             /// CENTER CONTENT
+                             Expanded(
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                       
+                                   /// ITEM NAME
+                                   Text(
+                                     mapItem["name"],
+                                     style: const TextStyle(
+                                       fontSize: 16,
+                                       fontWeight: FontWeight.w600,
+                                     ),
+                                   ),
+                       
+                                   const SizedBox(height: 18),
+                       
+                                   /// QUANTITY ROW
+                                   Row(
+                                     mainAxisSize: MainAxisSize.min,
+                                     children: [
+                                   
+                                       /// MINUS / DELETE
+                                       Container(
+                                         height: 35,
+                                         decoration: BoxDecoration(
+                                       border: Border.all(color: Colors.grey.shade300),
+                                       borderRadius: BorderRadius.circular(20),
+                                     ),
+                                         child: 
+                                         Row(
+                        children: [
+                           GestureDetector(
+                         onTap: () {
+                           HapticFeedback.vibrate();
+                       
+                           cartVm.decreaseQty(
+                             restaurantId,
+                             mapItem["itemId"],
+                           );
+                         },
+                         child: Padding(
+                           padding: const EdgeInsets.symmetric(horizontal: 12),
+                           child: Icon(
+                             qty == 1 ? Icons.delete_outline : Icons.remove,
+                             size: 18,
+                           ),
+                         ),
+                       ),
+                                   
+                                       Text(
+                                         qty.toString(),
+                                         style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                                         ),
+                                       ),
+                                   
+                                     GestureDetector(
+                         onTap: () {
+                           HapticFeedback.vibrate();
+                           cartVm.increaseQty(
+                             restaurantId,
+                             mapItem["itemId"],
+                           );
+                         },
+                         child: Padding(
+                           padding: const EdgeInsets.symmetric(horizontal: 12),
+                           child: const Icon(Icons.add, size: 18),
+                         ),
+                       ),
+                       
+                        ],
+                                         ),
+                                       
+                                       
+                                       ),
+                                       Spacer(),
+                                       Text(
+                        "Rs. ${itemTotal.toStringAsFixed(2)}",
+                        style: AppText.bodyLarge.copyWith(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                                         ),
+                                     ],
+                                   ),
+                                 
+                                 // Divider(color: Colors.black,)
+                                 
+                                 ],
+                               ),
+                             ),
+                       
+                           ],
+                         ),
+                       ),
+                     
+                     Divider(color: Colors.grey.shade300)
+                     ],
+                   );
+                        }).toList(),
 
-                                                  // INCREASE BUTTON
-                                                  IconButton(
-                                                    icon: Icon(Icons.add),
-                                                    onPressed: () {
-                                                      cartVm.updateItemQuantity(
-                                                        item['name'],
-                                                        item['quantity'] + 1,
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
 
-                                            Spacer(),
-                                            // TOTAL PRICE PER ITEM
-                                            Text(
-                                              "Rs. ${(item['price'] * item['quantity']).toStringAsFixed(0)}",
-                                              style: AppText.bodyLarge.copyWith(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Divider(),
-                            ],
-                          ),
-                        );
-                      },
+                        /// ================= SUBTOTAL =================
+                      ],
                     ),
 
                     const SizedBox(height: 5),
@@ -302,13 +340,6 @@ class ConfirmOrderview extends StatelessWidget {
                       child: GestureDetector(
                         onTap: () {
                           Nav.to(context, BottomNavi());
-                          final model = Provider.of<HomeViewModel>(
-                            context,
-                            listen: false,
-                          );
-                          model.isSearchBarSticky = false; // hide sticky bar
-                          // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-                          model.notifyListeners();
                         },
                         child: const Text(
                           '+ Add more items',
@@ -328,7 +359,8 @@ class ConfirmOrderview extends StatelessWidget {
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
+                      child:Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Spacer ki jagah ye
                         children: [
                           Text(
                             "Subtotal",
@@ -337,9 +369,8 @@ class ConfirmOrderview extends StatelessWidget {
                               fontSize: 20,
                             ),
                           ),
-                          Spacer(),
                           Text(
-                            "Rs. ${cartVm.totalPrice.toStringAsFixed(2)}",
+                            "Rs. ${subTotal.toStringAsFixed(2)}",
                             style: AppText.titleLarge.copyWith(
                               color: Colors.black,
                               fontSize: 15,
@@ -347,6 +378,7 @@ class ConfirmOrderview extends StatelessWidget {
                           ),
                         ],
                       ),
+
                     ),
                     SizedBox(height: 10),
 
@@ -380,7 +412,7 @@ class ConfirmOrderview extends StatelessWidget {
                               fontSize: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.learnMore,
+                              color: Color(0xFF5B1E8C),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             preferBelow: false,
@@ -420,16 +452,17 @@ class ConfirmOrderview extends StatelessWidget {
                             ),
                           ),
                           Spacer(),
-                          Switch(
-                            value: cartVm.isSwitched,
-                            onChanged: (value) {
-                              cartVm.toggle(value);
-                            },
-                            activeColor: Colors.pink, // ON color
-                            inactiveThumbColor: Colors.grey, // OFF thumb color
-                            inactiveTrackColor:
-                                Colors.grey.shade300, // OFF track color
-                          ),
+                           Consumer<CartViewModel>(
+        builder: (context, cartVm, child) => Switch(
+          value: cartVm.isSwitched,
+          onChanged: (value) {
+            cartVm.toggleSwitch(value);
+          },
+          activeColor: Colors.pink, // ON color
+          inactiveThumbColor: Colors.grey, // OFF thumb color
+          inactiveTrackColor: Colors.grey.shade300, // OFF track
+        ),
+      ),
                         ],
                       ),
                     ),
@@ -444,7 +477,7 @@ class ConfirmOrderview extends StatelessWidget {
     );
   }
 
-  Widget _deliveryCard() {
+  Widget _deliveryCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -454,7 +487,7 @@ class ConfirmOrderview extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.delivery_dining, size: 40, color: AppColors.appColor),
+          Icon(Icons.delivery_dining, size: 40, color: Theme.of(context).primaryColor),
           SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,10 +507,6 @@ class ConfirmOrderview extends StatelessWidget {
       ),
     );
   }
+
+
 }
-
-
-
-
-
-

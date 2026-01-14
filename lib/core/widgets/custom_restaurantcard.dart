@@ -7,26 +7,30 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/data/models/restaurant_model.dart';
+import 'package:food_delivery_app/features/favorite/favorite_itemview.dart';
 import 'package:food_delivery_app/features/home/home_viewmodel.dart';
 import 'package:food_delivery_app/features/rest_detail_view/restaurant_detail_view.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 
 // top line widget
 
 class TopItem extends StatelessWidget {
   final String image;
   final String title;
+  final VoidCallback onTap;
 
-  const TopItem({super.key, required this.title, required this.image});
+  const TopItem({
+    super.key,
+    required this.title,
+    required this.image,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        // Nav.to(context, AnimatedSearchBar());
-      },
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Column(
@@ -82,60 +86,47 @@ class TopItem extends StatelessWidget {
   }
 }
 
-// CategoryItem Widget
 class CategoryItem extends StatelessWidget {
   final String imageUrl;
   final String title;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-  const CategoryItem({super.key, required this.imageUrl, required this.title});
+  const CategoryItem({
+    super.key,
+    required this.imageUrl,
+    required this.title,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+    return GestureDetector(
+      onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(
-              10,
-            ), // <-- yahan border radius set
-            child: 
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              height: 70,
-              width: 70,
-              fit: BoxFit
-                  .cover, // <-- image container ke size ke hisaab se cover karegi
-              placeholder: (context, url) => Center(
-                child: Shimmer.fromColors(
-                  baseColor: Colors.grey.shade300,
-                  highlightColor: Colors.grey.shade100,
-                  period: Duration(milliseconds: 1000),
-                  child: Container(
-                    height: 70,
-                    width: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(
-                        10,
-                      ), // <-- placeholder bhi rounded
-                    ),
-                  ),
-                ),
+          Container(
+            margin: EdgeInsets.only(left: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected ? Colors.black : Colors.transparent,
+                width: 2,
               ),
-              errorWidget: (context, url, error) => Container(
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 height: 70,
                 width: 70,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.error),
+                fit: BoxFit.cover,
               ),
             ),
           ),
-          SizedBox(height: 5),
+          const SizedBox(height: 5),
           Text(title, style: AppText.bodyMedium.copyWith(color: Colors.black)),
         ],
       ),
@@ -219,6 +210,8 @@ class TopBrandCard extends StatelessWidget {
   }
 }
 
+
+
 class RestaurantCard extends StatefulWidget {
   final RestaurantModel restaurant;
   final String imageUrl;
@@ -285,12 +278,20 @@ class _RestaurantCardState extends State<RestaurantCard>
 
     if (isFav) {
       _controller.reverse();
+      _showFavouriteSnackBar(context, "Removed from Favourites");
     } else {
       _controller.forward();
+
+      _showFavouriteSnackBar(context, "Added to Favorites", "View all", () {
+        Nav.toAnimated(context, FavoriteItemview());
+      });
     }
 
     viewModel.toggleFavorite(widget.restaurant.id);
   }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -384,307 +385,35 @@ class _RestaurantCardState extends State<RestaurantCard>
   }
 }
 
+void _showFavouriteSnackBar(
+  context,
+  String title, [
+  String? button,
+  VoidCallback? onPressed,
+]) {
 
 
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF2E2E2E),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        duration: const Duration(seconds: 3),
 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 
+        content: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
 
-
-
-
-
-
-
-// class RestaurantCard extends StatefulWidget {
-//   final String imageUrl;
-//   final String title;
-//   final String rating;
-//   final String time;
-//   final String price;
-//   final bool isFavorite; // initial value
-//   final VoidCallback? onFavoriteTap;
-
-//   const RestaurantCard({
-//     super.key,
-//     required this.imageUrl,
-//     required this.title,
-//     required this.rating,
-//     required this.time,
-//     required this.price,
-//     this.isFavorite = false,
-//     this.onFavoriteTap,
-//     required controller,
-//   });
-
-//   @override
-//   State<RestaurantCard> createState() => _RestaurantCardState();
-// }
-
-// class _RestaurantCardState extends State<RestaurantCard>
-//     with SingleTickerProviderStateMixin {
-//   late bool _isFav;
-//   late final AnimationController _controller;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _isFav = widget.isFavorite;
-//     _controller = AnimationController(
-//       vsync: this,
-//       duration: Duration(seconds: 2),
-//       reverseDuration: Duration(milliseconds: 200),
-//     );
-//   }
-
-//   @override
-//   void dispose() {
-//     _controller.dispose();
-//     super.dispose();
-//   }
-
-//   void _toggleFavorite() {
-//     HapticFeedback.lightImpact();
-//     setState(() {
-//       _isFav = !_isFav;
-//       if (_isFav) {
-//         _controller.forward();
-//       } else {
-//         _controller.reverse();
-//       }
-//     });
-
-//     if (widget.onFavoriteTap != null) widget.onFavoriteTap!();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(horizontal: 12),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           /// IMAGE + FAVORITE
-//           Container(
-//             height: 160,
-//             width: 270,
-//             decoration: BoxDecoration(
-//               borderRadius: BorderRadius.circular(10),
-//               image: DecorationImage(
-//                 image: NetworkImage(widget.imageUrl),
-//                 fit: BoxFit.cover,
-//               ),
-//             ),
-//             child: Stack(
-//               children: [
-//                 Positioned(
-//                   top: 10,
-//                   right: 10,
-//                   child: GestureDetector(
-//                     onTap: _toggleFavorite,
-//                     child: CircleAvatar(
-//                       radius: 12,
-//                       backgroundColor: Colors.white,
-//                       child: Lottie.asset(
-//                         "assets/lottie/favorite.json",
-//                         controller: _controller,
-//                         repeat: false,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           const SizedBox(height: 5),
-
-//           /// TITLE + RATING
-//           SizedBox(
-//             width: 270,
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: Text(widget.title, overflow: TextOverflow.ellipsis),
-//                 ),
-//                 const Icon(Icons.star, color: Colors.yellow, size: 20),
-//                 Text(widget.rating),
-//               ],
-//             ),
-//           ),
-
-//           const SizedBox(height: 5),
-
-//           /// TIME
-//           Text(widget.time),
-
-//           const SizedBox(height: 5),
-
-//           /// DELIVERY PRICE
-//           Row(
-//             children: [
-//               const Icon(FontAwesomeIcons.motorcycle, size: 16),
-//               const SizedBox(width: 10),
-//               Text(widget.price),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// class RestaurantCardExplore extends StatefulWidget {
-//   final String imageUrl;
-//   final String title;
-//   final String rating;
-//   final String time;
-//   final String price;
-//   final bool isFavorite; // initial value
-//   final VoidCallback? onFavoriteTap;
-
-//   const RestaurantCardExplore({
-//     super.key,
-//     required this.imageUrl,
-//     required this.title,
-//     required this.rating,
-//     required this.time,
-//     required this.price,
-//     this.isFavorite = false,
-//     this.onFavoriteTap,
-//     required controller,
-//   });
-
-//   @override
-//   State<RestaurantCardExplore> createState() => _RestaurantCardExploreState();
-// }
-
-// class _RestaurantCardExploreState extends State<RestaurantCardExplore>
-//     with SingleTickerProviderStateMixin {
-//   late final AnimationController _controller;
-//   late bool _isFav;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _isFav = widget.isFavorite;
-//     _controller = AnimationController(
-//       vsync: this,
-//       duration: Duration(seconds: 2),
-//       reverseDuration: Duration(milliseconds: 200),
-//     );
-//   }
-
-//   @override
-//   void dispose() {
-//     _controller.dispose();
-//     super.dispose();
-//   }
-
-//   void _toggleFavorite() {
-//     HapticFeedback.lightImpact();
-//     setState(() {
-//       _isFav = !_isFav;
-//       if (_isFav) {
-//         _controller.forward();
-//       } else {
-//         _controller.reverse();
-//       }
-//     });
-
-//     if (widget.onFavoriteTap != null) widget.onFavoriteTap!();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           /// IMAGE + FAVORITE
-//           Container(
-//             height: 160,
-//             decoration: BoxDecoration(
-//               borderRadius: BorderRadius.circular(10),
-//               image: DecorationImage(
-//                 image: NetworkImage(widget.imageUrl),
-//                 fit: BoxFit.cover,
-//               ),
-//             ),
-//             child: Stack(
-//               children: [
-//                 Positioned(
-//                   top: 10,
-//                   right: 10,
-//                   child: GestureDetector(
-//                     onTap: _toggleFavorite,
-//                     child: CircleAvatar(
-//                       radius: 15,
-//                       backgroundColor: Colors.white,
-//                       child: Lottie.asset(
-//                         "assets/lottie/favorite.json",
-//                         controller: _controller,
-//                         repeat: false,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           const SizedBox(height: 5),
-
-//           /// TITLE + RATING
-//           SizedBox(
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: Text(widget.title, overflow: TextOverflow.ellipsis),
-//                 ),
-//                 const Icon(Icons.star, color: Colors.yellow, size: 20),
-//                 Text(widget.rating),
-//               ],
-//             ),
-//           ),
-
-//           const SizedBox(height: 5),
-
-//           /// TIME
-//           Text(widget.time),
-
-//           const SizedBox(height: 5),
-
-//           /// DELIVERY PRICE
-//           Row(
-//             children: [
-//               const Icon(FontAwesomeIcons.motorcycle, size: 16),
-//               const SizedBox(width: 10),
-//               Text(widget.price),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
+        action: SnackBarAction(
+          label: button ?? "",
+          textColor: Colors.white,
+          onPressed: onPressed ?? () {},
+        ),
+      ),
+    );
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
+import 'package:food_delivery_app/features/bottom_navigation/bottom_navi.dart';
 import 'package:provider/provider.dart';
-import 'package:food_delivery_app/config/routes/app_routes.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/widgets/myButton.dart';
 import 'package:lottie/lottie.dart';
@@ -11,10 +12,8 @@ class NotificationView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Consumer<NotificationViewmodel>(
-      builder: (context, model, child) => 
-       SafeArea(
+      builder: (context, model, child) => SafeArea(
         child: Scaffold(
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -22,20 +21,26 @@ class NotificationView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Lottie.asset("assets/lottie/Notification.json"),
-  
-                model.loading ? Lottie.asset("assets/lottie/loader.json",height: 70,width: 70) : MyButton(
+
+                model.loading
+                    ? Lottie.asset(
+                        "assets/lottie/loader.json",
+                        height: 70,
+                        width: 70,
+                      )
+                    : MyButton(
                         title: "Access NOTIFICATION",
                         textStyle: AppText.bodyLarge.copyWith(fontSize: 18),
                         ontap: () async {
                           bool allowed = await model.allowNotification();
                           if (allowed) {
-                            Navigator.pushReplacementNamed(context, AppRoutes.bottomNavi);
+                            Nav.toAnimatedReplacement(context, BottomNavi());
                           }
                         },
                       ),
-        
+
                 SizedBox(height: 30),
-        
+
                 Text(
                   "Stay Updated!",
                   textAlign: TextAlign.center,
@@ -54,12 +59,6 @@ class NotificationView extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
 
 // import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart';

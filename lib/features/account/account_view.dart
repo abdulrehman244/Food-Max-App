@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:food_delivery_app/config/theme/app_color.dart';
 import 'package:food_delivery_app/config/theme/app_text.dart';
 import 'package:food_delivery_app/core/helpers/navigation_helper.dart';
 import 'package:food_delivery_app/features/account/account_viewmodel.dart';
@@ -88,7 +87,7 @@ class AccountView extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppColors.learnMore,
+                    color: Color(0xFF5B1E8C),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Column(
@@ -268,7 +267,7 @@ class AccountView extends StatelessWidget {
                                                 },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
-                                                      AppColors.appColor,
+                                                       Theme.of(context).primaryColor,
                                                   padding:
                                                       const EdgeInsets.symmetric(
                                                         vertical: 14,
