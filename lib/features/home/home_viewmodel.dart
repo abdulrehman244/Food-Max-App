@@ -278,6 +278,8 @@ Future<void> syncFavoritesWithFirestore() async {
 
   final List<String> images = [
     "https://cdn.pixabay.com/photo/2018/07/14/21/30/club-sandwich-3538455_1280.jpg",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7Fu9lPWkLE5L0gaBsRMxAfkSLHrjGXLn3gw&s",
+    "https://media.istockphoto.com/id/2061716709/photo/grilled-rib-burger.jpg?s=612x612&w=0&k=20&c=QS37W9zjBE3GoOeR8ay3k_DS7oXPH07MBg-WHY5Joac=",
     "https://cdn.pixabay.com/photo/2020/10/05/21/30/hamburger-5630800_1280.jpg",
     "https://cdn.pixabay.com/photo/2022/07/15/18/12/cheese-burger-7323672_1280.jpg",
   ];
